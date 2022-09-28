@@ -14,34 +14,6 @@ def processData():
 if __name__ == "__main__":
     # saveVidFrames()
     processData()
-    # import cv2
-    # import os
-    # from os.path import join
-    # import numpy as np
-    # import matplotlib.pyplot as plt
-    
-    # framePath = "data/continuousFlow/frames/"
-    # binaryPath = "data/continuousFlow/binary/"
-    # allFramesName = [f for f in os.listdir(framePath) if os.path.isfile(join(framePath, f))]
-    
-    # for frameName in allFramesName:
-    #     print(frameName)
-    #     # read the frame
-    #     frame = cv2.imread(join(framePath, frameName), 0)
-        
-    #     # Crop the frame from certre, original size is 400x800
-    #     top = 100
-    #     bottom = 700
-    #     left = 100
-    #     right = 300
-    #     frame = frame[top:bottom,left:right]
-        
-    #     # NOTE: The best parameters are i=9 and j=5, gaussian adaptive thresholding
-    #     i = 9
-    #     j = 5
-        
-    #     th2 = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,i,j)
-    #     cv2.imwrite(join(binaryPath, frameName), th2)
         
     ''' 
     # Show the frame in grayscale
