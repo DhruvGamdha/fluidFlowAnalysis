@@ -113,6 +113,47 @@ def makeConcatVideos(framePath, binaryPath, videoName_avi, top, bottom, left, ri
     video.release()
     # Now the video is saved in the current directory
 
+def makeSingleVideo(framePath, nameTemplate, videoPath):
+    
+    import cv2
+    import os
+    from os.path import join
+    import numpy as np
+    
+    allFramesName_unorder = [f for f in os.listdir(framePath) if (os.path.isfile(join(framePath, f)) and f.endswith(".png"))]
+    
+    # create numpy array to store the frame numbers
+    allFramesNum = np.zeros(len(allFramesName_unorder))
+    
+    # use the name template of type "<string>%d.png" to extract the frame number from each frame name
+    for i in range(len(allFramesName_unorder)):
+        allFramesNum[i] = int(allFramesName_unorder[i][len(nameTemplate)-6:-4])
+        
+    # sort the frame numbers
+    allFramesNum = np.sort(allFramesNum).astype(int)
+    
+    # Define the codec and create VideoWriter object
+    # video = cv2.VideoWriter_fourcc(*'XVID')
+    tempImg = cv2.imread(join(framePath, nameTemplate % allFramesNum[0]), 0)
+    # width, height = tempImg.shape
+    height, width = tempImg.shape
+    print("temp Img shape:",width, height)
+    print("temp img type:", type(tempImg))
+    video = cv2.VideoWriter(videoPath,0, 60.0, (width, height))
+    
+    for frameNum in allFramesNum:
+        print(frameNum)
+        frm_img = cv2.imread(join(framePath, nameTemplate % frameNum))
+        # Check if frame is read correctly
+        if frm_img is None:
+            exit()
+            
+        # feed the concatenated image to the video writer
+        video.write(frm_img)
+         
+    cv2.destroyAllWindows()
+    video.release()
+    # Now the video is saved in the current directory
 
 def roughWork():
        
