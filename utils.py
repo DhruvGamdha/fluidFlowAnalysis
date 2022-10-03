@@ -1,6 +1,6 @@
 
 # function to read and save video
-def readAndSaveVid(videoFileName, videoFilePath):
+def readAndSaveVid(videoFileName, videoFilePath, saveFramePath):
     import cv2
     from os.path import join
 
@@ -22,7 +22,7 @@ def readAndSaveVid(videoFileName, videoFilePath):
             print("Can't receive frame (stream end?). Exiting ...")
             break
         else: # Save the frame as a .png file
-            cv2.imwrite(join(videoFilePath, "frames","frame%d.png" % count), frame)
+            cv2.imwrite(join(saveFramePath, "frames","frame%d.png" % count), frame)
             count += 1
 
 def processImages(framePath, binaryPath):
