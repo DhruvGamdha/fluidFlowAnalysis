@@ -25,7 +25,7 @@ def readAndSaveVid(videoFileName, videoFilePath, saveFramePath):
             cv2.imwrite(join(saveFramePath, "frames","frame%d.png" % count), frame)
             count += 1
 
-def processImages(framePath, binaryPath):
+def processImages(framePath, binaryPath, top, bottom, left, right):
     import cv2
     import os
     from os.path import join
@@ -42,10 +42,6 @@ def processImages(framePath, binaryPath):
         frame = cv2.imread(join(framePath, frameName), 0)
         
         # Crop the frame from certre, original size is 400x800
-        top = 100
-        bottom = 700
-        left = 100
-        right = 300
         frame = frame[top:bottom,left:right]
         
         # NOTE: The best parameters are i=9 and j=5, gaussian adaptive thresholding
@@ -55,7 +51,7 @@ def processImages(framePath, binaryPath):
         th2 = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,i,j)
         cv2.imwrite(join(binaryPath, frameName), th2)
             
-def makeConcatVideos(framePath, binaryPath, videoName_avi):
+def makeConcatVideos(framePath, binaryPath, videoName_avi, top, bottom, left, right):
     import cv2
     import os
     from os.path import join
@@ -105,7 +101,7 @@ def makeConcatVideos(framePath, binaryPath, videoName_avi):
         # Check if frame is read correctly
         if frm_img is None:
             exit()
-        frm_img = frm_img[100:700,100:300, :]
+        frm_img = frm_img[top:bottom,left:right, :]
         
         # Concatenate the two images horizontally (i.e. side-by-side), frm_img on the left and bin_img on the right
         concat_img = np.concatenate((frm_img, bin_img), axis=1)

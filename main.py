@@ -6,16 +6,31 @@ def saveVidFrames():
     saveFramePath = "data/continuousFlow/frames/"
     readAndSaveVid(videoFileName, videoFilePath, saveFramePath)
 
+def cropParameters():
+    # Crop the frame from center corresponding to below values, original size is 400x800
+    top = 120
+    bottom = 700
+    left = 150
+    right = 250
+    
+    return top, bottom, left, right
+
 def processData():
     framePath = "data/continuousFlow/frames/"
-    binaryPath = "results/continuousFlow/binary/"
-    processImages(framePath, binaryPath)
+    binaryPath = "results/continuousFlow/binary_v3/"
+    
+    # Crop the frame from center corresponding to below values, original size is 400x800
+    top, bottom, left, right = cropParameters()
+    processImages(framePath, binaryPath, top, bottom, left, right)
 
 def makeVideo():
     framePath = "data/continuousFlow/frames/"
-    binaryPath = "results/continuousFlow/binary/"
-    videoName_avi = "results/continuousFlow/videos/continuousFlow.avi"
-    makeConcatVideos(framePath, binaryPath, videoName_avi)
+    binaryPath = "results/continuousFlow/binary_v3/"
+    videoName_avi = "results/continuousFlow/videos/binary_v3/continuousFlow.avi"
+    
+    # Crop the frame from center corresponding to below values, original size is 400x800
+    top, bottom, left, right = cropParameters()
+    makeConcatVideos(framePath, binaryPath, videoName_avi, top, bottom, left, right)
 
 def binarySegmentation():
     import cv2
