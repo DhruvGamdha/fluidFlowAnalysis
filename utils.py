@@ -70,26 +70,13 @@ def makeConcatVideos(framePath, binaryPath, videoName_avi, top, bottom, left, ri
         frameNum = int(frameName[5:-4])
         allBiFrames[frameNum] = frameName
         
-    # Now allBiFrames is a list of all the frames in order of their names
-    # Create a video with all the frames in the list
-    
-    # Define the codec and create VideoWriter object
-    # video = cv2.VideoWriter_fourcc(*'XVID')
     tempImg = cv2.imread(join(binaryPath, allBiFrames[0]), 0)
     # width, height = tempImg.shape
     height, width = tempImg.shape
     print("temp Img shape:",width, height)
     print("temp img type:", type(tempImg))
-    video = cv2.VideoWriter(videoName_avi,0, 60.0, (2*width, height))
-    
-    # bin_img = cv2.imread(join(binaryPath, allBiFrames[0]), 0)
-    # frm_img = cv2.imread(join(framePath, allBiFrames[0]), 0)
-    # frm_img = frm_img[100:700,100:300]
-    
-    # # Concatenate the two images horizontally (i.e. side-by-side), frm_img on the left and bin_img on the right
-    # concat_img = np.concatenate((frm_img, bin_img), axis=1)
-    # print("concat img shape:",concat_img.shape)
-    # print("concat img type:", type(concat_img))
+    vidCodec = cv2.VideoWriter_fourcc(*'XVID')
+    video = cv2.VideoWriter(videoName_avi,vidCodec, 60.0, (2*width, height))
     
     for frame in allBiFrames:
         print(frame)
