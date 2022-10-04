@@ -51,44 +51,59 @@ def processImages(framePath, binaryPath, top, bottom, left, right):
         th2 = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,i,j)
         cv2.imwrite(join(binaryPath, frameName), th2)
             
-def makeConcatVideos(framePath, binaryPath, videoName_avi, top, bottom, left, right):
+def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, top, bottom, left, right):
     import cv2
     import os
     from os.path import join
     import numpy as np
     
-    # framePath = "data/continuousFlow/frames/"
-    # binaryPath = "data/continuousFlow/binary/"
-    allBiFramesName = [f for f in os.listdir(binaryPath) if (os.path.isfile(join(binaryPath, f)) and f.endswith(".png"))]
+    allFramesName_unorder = [f for f in os.listdir(binaryPath) if (os.path.isfile(join(binaryPath, f)) and f.endswith(".png"))]
     
-    # arrange the frames in order of their names (frame0.png, frame1.png, ...)
-    # Create list of size len(allBiFramesName) with all elements as 0
-    allBiFrames = [0] * len(allBiFramesName)
+    # create numpy array to store the frame numbers
+    allFramesNum = np.zeros(len(allFramesName_unorder))
     
-    # For each frame name, read the frame and save it in the list at the index of the frame number
-    for frameName in allBiFramesName:
-        frameNum = int(frameName[5:-4])
-        allBiFrames[frameNum] = frameName
+    # use the name template of type "<string>%d.png" to extract the frame number from each frame name
+    for i in range(len(allFramesName_unorder)):
+        allFramesNum[i] = int(allFramesName_unorder[i][len(nameTemplate)-6:-4])
         
-    tempImg = cv2.imread(join(binaryPath, allBiFrames[0]), 0)
-    # width, height = tempImg.shape
-    height, width = tempImg.shape
-    print("temp Img shape:",width, height)
-    print("temp img type:", type(tempImg))
-    vidCodec = cv2.VideoWriter_fourcc(*'XVID')
-    video = cv2.VideoWriter(videoName_avi,vidCodec, 60.0, (2*width, height))
+    # sort the frame numbers
+    allFramesNum = np.sort(allFramesNum).astype(int)
+        
+    tempImg1 = cv2.imread(join(binaryPath, nameTemplate % allFramesNum[0]), 0)
+    tempImg2 = cv2.imread(join(framePath, nameTemplate % allFramesNum[0]), 0)
     
-    for frame in allBiFrames:
-        print(frame)
-        bin_img = cv2.imread(join(binaryPath, frame))
-        # Check if frame is read correctly
-        if bin_img is None:
-            exit()
-        frm_img = cv2.imread(join(framePath, frame))
+    height1, width1 = tempImg1.shape
+    height2, width2 = tempImg2.shape
+    
+    print("temp Img shape:",width1, height1)
+    print("temp img type:", type(tempImg1))
+    
+    # find video size
+    videoWidth = width1 + width2
+    videoHeight = max(height1, height2)
+    
+    vidCodec = cv2.VideoWriter_fourcc(*'XVID')
+    # vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
+    video = cv2.VideoWriter(videoName_avi,vidCodec, fps, (videoWidth, videoHeight))
+    
+    for frameNum in allFramesNum:
+        print(frameNum)
+        frm_img = cv2.imread(join(framePath, nameTemplate % frameNum))
         # Check if frame is read correctly
         if frm_img is None:
             exit()
-        frm_img = frm_img[top:bottom,left:right, :]
+        # frm_img = frm_img[top:bottom,left:right, :]
+        
+        bin_img = cv2.imread(join(binaryPath, nameTemplate % frameNum))
+        # Check if frame is read correctly
+        if bin_img is None:
+            exit()
+        
+        # make bin_img height the same size as videoHeight by adding black pixels
+        bin_img = cv2.copyMakeBorder(bin_img, 0, videoHeight - height1, 0, 0, cv2.BORDER_CONSTANT, value=[0,0,0])
+        
+        # make frm_img height the same size as videoHeight by adding black pixels
+        frm_img = cv2.copyMakeBorder(frm_img, 0, videoHeight - height2, 0, 0, cv2.BORDER_CONSTANT, value=[0,0,0])
         
         # Concatenate the two images horizontally (i.e. side-by-side), frm_img on the left and bin_img on the right
         concat_img = np.concatenate((frm_img, bin_img), axis=1)

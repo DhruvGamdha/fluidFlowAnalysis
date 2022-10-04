@@ -33,13 +33,16 @@ def processData():
     processImages(framePath, binaryPath, top, bottom, left, right)
 
 def makeVideo_concat():
-    framePath = "data/continuousFlow/frames/"
-    binaryPath = "results/continuousFlow/binary/binary_v1/all/frames/"
-    videoName_avi = "results/continuousFlow/binary/binary_v1/all/continuousFlow.avi"
-    
+    # framePath = "data/continuousFlow/frames/"
+    lftFramesPath = "results/continuousFlow/binary/binary_v3/drop1/frames/"
+    # binaryPath = "results/continuousFlow/binary/binary_v1/all/frames/"
+    rhtFramesPath = "results/continuousFlow/binary/binary_v3/drop1/analysis/connectivity_1/dynamicMarker/frames/"
+    videoLocAndName_mp4 = "results/continuousFlow/binary/binary_v3/drop1/analysis/connectivity_1/dynamicMarker/continuousFlow_club.mp4"
+    nameTemplate = "frame%d.png"
+    fps = 60.0
     # Crop the frame from center corresponding to below values, original size is 400x800
     top, bottom, left, right = cropParameters()
-    makeConcatVideos(framePath, binaryPath, videoName_avi, top, bottom, left, right)
+    makeConcatVideos(lftFramesPath, rhtFramesPath, nameTemplate, videoLocAndName_mp4, fps, top, bottom, left, right)
 
 def makeVideo_single():
     framePath = "results/continuousFlow/binary/binary_v3/drop1/analysis/connectivity_2/dynamicMarker/frames/"
