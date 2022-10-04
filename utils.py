@@ -132,28 +132,28 @@ def makeSingleVideo(framePath, nameTemplate, videoPath):
     # sort the frame numbers
     allFramesNum = np.sort(allFramesNum).astype(int)
     
-    # Define the codec and create VideoWriter object
-    # video = cv2.VideoWriter_fourcc(*'XVID')
     tempImg = cv2.imread(join(framePath, nameTemplate % allFramesNum[0]), 0)
+    
     # width, height = tempImg.shape
     height, width = tempImg.shape
     print("temp Img shape:",width, height)
     print("temp img type:", type(tempImg))
-    video = cv2.VideoWriter(videoPath,0, 60.0, (width, height))
+    
+    # Define the codec and create VideoWriter object
+    vidCodec = cv2.VideoWriter_fourcc(*'XVID')
+    video = cv2.VideoWriter(videoPath, vidCodec, 60.0, (width, height))
     
     for frameNum in allFramesNum:
         print(frameNum)
         frm_img = cv2.imread(join(framePath, nameTemplate % frameNum))
-        # Check if frame is read correctly
-        if frm_img is None:
+        
+        if frm_img is None:     # Check if frame is read correctly
             exit()
-            
-        # feed the concatenated image to the video writer
-        video.write(frm_img)
+        
+        video.write(frm_img)    # feed the concatenated image to the video writer
          
     cv2.destroyAllWindows()
-    video.release()
-    # Now the video is saved in the current directory
+    video.release()            # Now the video is saved in the current directory
 
 def roughWork():
        
