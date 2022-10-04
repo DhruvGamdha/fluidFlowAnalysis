@@ -33,9 +33,9 @@ def makeVideo_concat():
     makeConcatVideos(framePath, binaryPath, videoName_avi, top, bottom, left, right)
 
 def makeVideo_single():
-    framePath = "results/continuousFlow/binary/binary_v3/drop1/analysis/vertPos/"
-    nameTemplate = "bubbleVertPos_%d.png"
-    videoPath = "results/continuousFlow/binary/binary_v3/drop1/analysis/allFrames.avi"
+    framePath = "results/continuousFlow/binary/binary_v3/drop1/frames/"
+    nameTemplate = "frame%d.png"
+    videoPath = "results/continuousFlow/binary/binary_v3/drop1/video/allFrames.avi"
     makeSingleVideo(framePath, nameTemplate, videoPath)
 
 def dropAnalysis():
@@ -115,6 +115,18 @@ def dropAnalysis():
         plt.savefig(join(analysisPath, "vertPos", "bubbleVertPos_" + str(frameNum) + ".png"), dpi=200)
         # plt.show()
         plt.close()
+        
+        # scatter plot the bubble vertical position, with x axis label as the bubble number, plot title as frame number, set the x and y axis limits
+        plt.scatter(range(1, count+1), bubble_vertPos, s=bubble_pixSize)
+        # plt.plot(bubble_vertPos)
+        plt.xlabel("Bubble Number")
+        plt.ylabel("Bubble Vertical Position")
+        plt.title("bubble positions in Frame Number: " + str(frameNum))
+        plt.xlim(0, 50)
+        plt.ylim(0, img.shape[0])
+        plt.savefig(join(analysisPath, "dynamicMarker", "bubbleVertPosMarkerSize_" + str(frameNum) + ".png"), dpi=200)
+        # plt.show()
+        plt.close()
     
     # Plot the bubble count, frame wise
     plt.plot(frame_bubbleCount)
@@ -128,7 +140,7 @@ if __name__ == "__main__":
     # saveVidFrames()
     # processData()
     # makeVideo_concat()
-    # makeVideo_single()
-    dropAnalysis()
+    makeVideo_single()
+    # dropAnalysis()
     print("Done")
     
