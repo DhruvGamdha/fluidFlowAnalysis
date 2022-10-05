@@ -6,8 +6,9 @@ def readAndSaveVid(videoFileName, videoFilePath, saveFramePath):
 
     videoFile = join(videoFilePath, videoFileName)
 
-    # Read the .mp4 file
-    video = cv2.VideoCapture(videoFile)
+    print("videoFile:", videoFile)
+    
+    video = cv2.VideoCapture(videoFile)     # Read the video file
 
     if video.isOpened():
         print("Video file opened successfully")
@@ -17,12 +18,12 @@ def readAndSaveVid(videoFileName, videoFilePath, saveFramePath):
     count = 0
     while video.isOpened():
         ret, frame = video.read()
-        # Check if frame is read correctly
-        if not ret:
+        if not ret:         # Check if frame is read correctly
             print("Can't receive frame (stream end?). Exiting ...")
             break
         else: # Save the frame as a .png file
-            cv2.imwrite(join(saveFramePath, "frames","frame%d.png" % count), frame)
+            print("frame number:", count)
+            cv2.imwrite(join(saveFramePath,"frame%d.png" % count), frame)
             count += 1
 
 def processImages(framePath, binaryPath, top, bottom, left, right):
@@ -32,17 +33,14 @@ def processImages(framePath, binaryPath, top, bottom, left, right):
     import numpy as np
     import matplotlib.pyplot as plt
     
-    # framePath = "data/continuousFlow/frames/"
-    # binaryPath = "data/continuousFlow/binary/"
     allFramesName = [f for f in os.listdir(framePath) if (os.path.isfile(join(framePath, f)) and f.endswith(".png"))]
     
     for frameName in allFramesName:
         print(frameName)
-        # read the frame
-        frame = cv2.imread(join(framePath, frameName), 0)
         
-        # Crop the frame from certre, original size is 400x800
-        frame = frame[top:bottom,left:right]
+        frame = cv2.imread(join(framePath, frameName), 0)   # Read the frame as grayscale
+        
+        frame = frame[top:bottom,left:right]    # Crop the frame from certre, original size is 400x800
         
         # NOTE: The best parameters are i=9 and j=5, gaussian adaptive thresholding
         i = 9
@@ -59,15 +57,13 @@ def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, to
     
     allFramesName_unorder = [f for f in os.listdir(binaryPath) if (os.path.isfile(join(binaryPath, f)) and f.endswith(".png"))]
     
-    # create numpy array to store the frame numbers
-    allFramesNum = np.zeros(len(allFramesName_unorder))
+    allFramesNum = np.zeros(len(allFramesName_unorder)) # create numpy array to store the frame numbers
     
     # use the name template of type "<string>%d.png" to extract the frame number from each frame name
     for i in range(len(allFramesName_unorder)):
         allFramesNum[i] = int(allFramesName_unorder[i][len(nameTemplate)-6:-4])
         
-    # sort the frame numbers
-    allFramesNum = np.sort(allFramesNum).astype(int)
+    allFramesNum = np.sort(allFramesNum).astype(int)    # sort the frame numbers
         
     tempImg1 = cv2.imread(join(binaryPath, nameTemplate % allFramesNum[0]), 0)
     tempImg2 = cv2.imread(join(framePath, nameTemplate % allFramesNum[0]), 0)
@@ -89,14 +85,14 @@ def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, to
     for frameNum in allFramesNum:
         print(frameNum)
         frm_img = cv2.imread(join(framePath, nameTemplate % frameNum))
-        # Check if frame is read correctly
-        if frm_img is None:
+        
+        if frm_img is None:     # Check if frame is read correctly
             exit()
         # frm_img = frm_img[top:bottom,left:right, :]
         
         bin_img = cv2.imread(join(binaryPath, nameTemplate % frameNum))
-        # Check if frame is read correctly
-        if bin_img is None:
+        
+        if bin_img is None:    # Check if frame is read correctly
             exit()
         
         # make bin_img height the same size as videoHeight by adding black pixels
@@ -108,12 +104,10 @@ def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, to
         # Concatenate the two images horizontally (i.e. side-by-side), frm_img on the left and bin_img on the right
         concat_img = np.concatenate((frm_img, bin_img), axis=1)
         
-        # feed the concatenated image to the video writer
-        video.write(concat_img)
+        video.write(concat_img) # Write the frame to video file
          
     cv2.destroyAllWindows()
-    video.release()
-    # Now the video is saved in the current directory
+    video.release() # Now the video is saved in the current directory
 
 def makeSingleVideo(framePath, nameTemplate, videoPath, fps):
     
@@ -124,25 +118,23 @@ def makeSingleVideo(framePath, nameTemplate, videoPath, fps):
     
     allFramesName_unorder = [f for f in os.listdir(framePath) if (os.path.isfile(join(framePath, f)) and f.endswith(".png"))]
     
-    # create numpy array to store the frame numbers
-    allFramesNum = np.zeros(len(allFramesName_unorder))
+    allFramesNum = np.zeros(len(allFramesName_unorder))  # create numpy array to store the frame numbers
     
     # use the name template of type "<string>%d.png" to extract the frame number from each frame name
     for i in range(len(allFramesName_unorder)):
         allFramesNum[i] = int(allFramesName_unorder[i][len(nameTemplate)-6:-4])
         
-    # sort the frame numbers
-    allFramesNum = np.sort(allFramesNum).astype(int)
+    allFramesNum = np.sort(allFramesNum).astype(int)    # sort the frame numbers
     
     tempImg = cv2.imread(join(framePath, nameTemplate % allFramesNum[0]), 0)
     
-    # width, height = tempImg.shape
     height, width = tempImg.shape
     print("temp Img shape:",width, height)
     print("temp img type:", type(tempImg))
     
     # Define the codec and create VideoWriter object
-    vidCodec = cv2.VideoWriter_fourcc(*'XVID')
+    # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
+    vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
     video = cv2.VideoWriter(videoPath, vidCodec, fps, (width, height))
     
     for frameNum in allFramesNum:
@@ -165,17 +157,9 @@ def dropAnalysis(binaryPath, analysisPath, nameTemplate, connectivity):
     import skimage.measure as skm
     import matplotlib.pyplot as plt
     
-    # binaryPath  = "results/continuousFlow/binary/binary_v3/drop1/frames/"
-    # analysisPath = "results/continuousFlow/binary/binary_v3/drop1/analysis/connectivity_1/"
-    # nameTemplate = "frame%d.png"
-    # drop_startFrameNum = 200
-    # connectivity = 1
+    allFrameNames_unorder = [f for f in os.listdir(binaryPath) if (os.path.isfile(join(binaryPath, f)) and f.endswith(".png"))]    # Read the binary images
     
-    # Read the binary images
-    allFrameNames_unorder = [f for f in os.listdir(binaryPath) if (os.path.isfile(join(binaryPath, f)) and f.endswith(".png"))]
-    
-    # create numpy array to store the frame numbers
-    allFramesNum = np.zeros(len(allFrameNames_unorder))
+    allFramesNum = np.zeros(len(allFrameNames_unorder))  # create numpy array to store the frame numbers
     
     # use the name template of type "<string>%d.png" to extract the frame number from each frame name
     for i in range(len(allFrameNames_unorder)):
@@ -194,8 +178,7 @@ def dropAnalysis(binaryPath, analysisPath, nameTemplate, connectivity):
         labelImg, count = skm.label(img, connectivity=connectivity, return_num=True)
         frame_bubbleCount.append(count)
         
-        # Print frame number and bubble count
-        print("Frame Number: ", frameNum, "Bubble Count: ", count)
+        print("Frame Number: ", frameNum, "Bubble Count: ", count)   # Print frame number and bubble count
         
         # Get the bubble details
         bubble_pixSize = []         # bubble pixel size, bubble wise
@@ -207,7 +190,7 @@ def dropAnalysis(binaryPath, analysisPath, nameTemplate, connectivity):
             bubble_pixSize.append(len(rows))        # adding ith bubble pixel size
             vertPos = np.min(rows)                  # finding the highest pixel vertical position
             vertPos = img.shape[0] - vertPos        # converting to the original image coordinates
-            bubble_vertPos.append(vertPos)        # adding ith bubble highest pixel position
+            bubble_vertPos.append(vertPos)          # adding ith bubble highest pixel position
         
         frame_bubblePixSizes.append(bubble_pixSize)     # adding all bubble pixel sizes in the frame
         frame_bubbleVertPos.append(bubble_vertPos)      # adding all bubble highest pixel positions in the frame
