@@ -82,8 +82,8 @@ def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, to
     videoWidth = width1 + width2
     videoHeight = max(height1, height2)
     
-    vidCodec = cv2.VideoWriter_fourcc(*'XVID')
-    # vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
+    # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
+    vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
     video = cv2.VideoWriter(videoName_avi,vidCodec, fps, (videoWidth, videoHeight))
     
     for frameNum in allFramesNum:
