@@ -1,54 +1,62 @@
 from utils import readAndSaveVid, processImages, makeConcatVideos, makeSingleVideo
 
 def saveVidFrames():
-    videoFileName = "silOilPFD_20uLh_500fps_continuousExtrude.mp4"
-    videoFilePath = "data/continuousFlow/"
-    saveFramePath = "data/continuousFlow/frames/"
+    videoFileName = "Extrusions_5000cst_500fps_run2_drop2_cut.avi"
+    videoFilePath = "/media/dhruv/data/Dhruv/ISU/PhD/Projects/LEAP_HI/software/dataAnalysis/fluidFlow/data/fluidFlow2/"
+    saveFramePath = "/media/dhruv/data/Dhruv/ISU/PhD/Projects/LEAP_HI/software/dataAnalysis/fluidFlow/data/fluidFlow2/frames/"
     readAndSaveVid(videoFileName, videoFilePath, saveFramePath)
 
 def cropParameters():
     # Crop the frame from center corresponding to below values, original size is 400x800
-    
-    # binary_v1 parameters
+    ''' 
+    # fluidFlow1 binary_v1 parameters
     top = 100
     bottom = 700
     left = 100
     right = 300
-    
-    '''     
-    # binary_v3 parameters
+     '''
+        
+    ''' 
+    # fluidFlow1 binary_v3 parameters
     top = 120
     bottom = 700
     left = 150
-    right = 250
+    right = 250 
     '''
+    
+    # fluidFlow2 binary_v1 parameters
+    top     = 100
+    bottom  = 750
+    left    = 105
+    right   = 200
+   
     return top, bottom, left, right
 
-def processData():
-    framePath = "data/continuousFlow/frames/"
-    binaryPath = "results/continuousFlow/binary/binary_v3/"
+def createBinaryRep():
+    framePath = "data/fluidFlow2/frames/"
+    binaryPath = "results/fluidFlow2/binary/binary_v1/"     # NOTE: Create frames directory inside binaryPath, if not present, to store the binary images
     
-    # Crop the frame from center corresponding to below values, original size is 400x800
-    top, bottom, left, right = cropParameters()
+    top, bottom, left, right = cropParameters()     # frame cropping parameters from center, original size is 400x800
     processImages(framePath, binaryPath, top, bottom, left, right)
 
 def makeVideo_concat():
-    # framePath = "data/continuousFlow/frames/"
-    lftFramesPath = "results/continuousFlow/binary/binary_v3/drop1/frames/"
-    # binaryPath = "results/continuousFlow/binary/binary_v1/all/frames/"
-    rhtFramesPath = "results/continuousFlow/binary/binary_v3/drop1/analysis/connectivity_1/dynamicMarker/frames/"
-    videoLocAndName_mp4 = "results/continuousFlow/binary/binary_v3/drop1/analysis/connectivity_1/dynamicMarker/continuousFlow_club.mp4"
+    lftFramesPath = "data/fluidFlow2/frames/"
+    # lftFramesPath = "results/continuousFlow/binary/binary_v3/drop1/frames/"
+    rhtFramesPath = "results/fluidFlow2/binary/binary_v1/frames/"
+    # rhtFramesPath = "results/continuousFlow/binary/binary_v3/drop1/analysis/connectivity_1/pixSize/frames/"
+    videoLocAndName_mp4 = "results/fluidFlow2/binary/binary_v1/allFrames_club.mp4"
     nameTemplate = "frame%d.png"
     fps = 60.0
-    # Crop the frame from center corresponding to below values, original size is 400x800
-    top, bottom, left, right = cropParameters()
-    makeConcatVideos(lftFramesPath, rhtFramesPath, nameTemplate, videoLocAndName_mp4, fps, top, bottom, left, right)
+    cropOn = True
+    
+    top, bottom, left, right = cropParameters()  # frame cropping parameters from center, Applied on the original video frames
+    makeConcatVideos(lftFramesPath, rhtFramesPath, nameTemplate, videoLocAndName_mp4, fps, top, bottom, left, right, cropOn)
 
 def makeVideo_single():
-    framePath = "results/continuousFlow/binary/binary_v3/drop1/analysis/connectivity_2/dynamicMarker/frames/"
+    framePath = "results/fluidFlow2/binary/binary_v1/frames/"
     nameTemplate = "frame%d.png"
-    videoPath = "results/continuousFlow/binary/binary_v3/drop1/analysis/connectivity_2/dynamicMarker/allFrames.avi"
-    fps = 30.0
+    videoPath = "results/fluidFlow2/binary/binary_v1/allFrames.mp4"
+    fps = 60.0
     makeSingleVideo(framePath, nameTemplate, videoPath, fps)
 
 def useDropAnalysis():
@@ -62,18 +70,18 @@ def useDropAnalysis():
     
     from utils import dropAnalysis
     binaryPath  = "results/continuousFlow/binary/binary_v3/drop2/frames/"
-    analysisPath = "results/continuousFlow/binary/binary_v3/drop2/analysis/connectivity_1/"
+    analysisPath = "results/continuousFlow/binary/binary_v3/drop2/analysis/connectivity_2/"
     nameTemplate = "frame%d.png"
-    connectivity = 1
+    connectivity = 2
     
     dropAnalysis(binaryPath, analysisPath, nameTemplate, connectivity)
 
 # main function
 if __name__ == "__main__":
     # saveVidFrames()
-    # processData()
-    makeVideo_concat()
+    # createBinaryRep()
     # makeVideo_single()
+    makeVideo_concat()
     # useDropAnalysis()
     print("Done")
     

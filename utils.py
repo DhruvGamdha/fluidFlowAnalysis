@@ -47,9 +47,9 @@ def processImages(framePath, binaryPath, top, bottom, left, right):
         j = 5
         
         th2 = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,i,j)
-        cv2.imwrite(join(binaryPath, frameName), th2)
+        cv2.imwrite(join(binaryPath, "frames", frameName), th2)
             
-def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, top, bottom, left, right):
+def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, top, bottom, left, right, cropOn):
     import cv2
     import os
     from os.path import join
@@ -67,6 +67,9 @@ def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, to
         
     tempImg1 = cv2.imread(join(binaryPath, nameTemplate % allFramesNum[0]), 0)
     tempImg2 = cv2.imread(join(framePath, nameTemplate % allFramesNum[0]), 0)
+    
+    if cropOn:
+        tempImg2 = tempImg2[top:bottom,left:right]    # Crop the frame from certre, original size is 400x800
     
     height1, width1 = tempImg1.shape
     height2, width2 = tempImg2.shape
@@ -88,7 +91,9 @@ def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, to
         
         if frm_img is None:     # Check if frame is read correctly
             exit()
-        # frm_img = frm_img[top:bottom,left:right, :]
+        
+        if cropOn:
+            frm_img = frm_img[top:bottom,left:right, :]
         
         bin_img = cv2.imread(join(binaryPath, nameTemplate % frameNum))
         
