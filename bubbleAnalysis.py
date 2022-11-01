@@ -9,11 +9,10 @@ class bubbleAnalysis:
         
         self.videoName          = videoName
         self.resVersionDirName  = 'version'
-        self.subResultDirNames  = ['binary', 'binary/all', 'binary/all/frames', 'analysis']
-        self.subResDirPaths     = None          # dictionary of sub directories paths
+        self.subResultDirNames  = ['binary', 'binary/all', 'binary/all/frames', 'analysis', 'analysis/pixSize', 'analysis/vertPos', 'analysis/dynamicMarker']
         
         self.videoFPS           = 60.0          # FPS of the video
-        self.frameNameTemplate  = 'frame%4d.png' # Name template of the frames
+        self.frameNameTemplate  = 'frame%d.png' # Name template of the frames
         self.flowType           = 2             # 1: fluidFlow1, 2: fluidFlow2
         self.createResultDirs()
         
@@ -32,13 +31,13 @@ class bubbleAnalysis:
     def getBinaryImages(self):
         from utils import processImages
         para = self.cropParameters(self.flowType)
-        processImages(self.paths['vidFramesDirPath'], self.subResDirPaths['binary/all/frames'], para['top'], para['bottom'], para['left'], para['right'])
+        processImages(self.paths['vidFramesDirPath'], self.paths['binary/all/frames'], para['top'], para['bottom'], para['left'], para['right'], para['blockSize'], para['constantSub'], para['minSize'], para['connectivity'])
         
     def createVideoFromFrames(self, frameDir, videoDir):
         from utils import makeSingleVideo
         from os.path import join
         videoPath = join(videoDir, 'video.mp4')
-        makeSingleVideo(self.subResDirPaths[frameDir], self.frameNameTemplate, videoPath, self.videoFPS)
+        makeSingleVideo(self.paths[frameDir], self.frameNameTemplate, videoPath, self.videoFPS)
           
     def createConcatVideo(self, lftFrameDir, rhtFrameDir, videoDir):
         from utils import makeConcatVideos
@@ -60,8 +59,8 @@ class bubbleAnalysis:
             para['bottom']  = 700
             para['left']    = 100
             para['right']   = 300
-            para['i']       = 9
-            para['j']       = 5
+            para['blockSize']       = 9
+            para['constantSub']       = 5
             para['connectivity'] = 2
             para['minSize'] = 1
             ''' 
@@ -79,8 +78,8 @@ class bubbleAnalysis:
             para['bottom']  = 750
             para['left']    = 105
             para['right']   = 200
-            para['i']       = 41
-            para['j']       = 7
+            para['blockSize']       = 41
+            para['constantSub']       = 7
             para['connectivity'] = 1
             para['minSize'] = 1
             
