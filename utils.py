@@ -1,11 +1,9 @@
 
 # function to read and save video
-def readAndSaveVid(videoFileName, videoFilePath, saveFramePath):
+def readAndSaveVid(videoFile, saveFramePath):
     import cv2
     from os.path import join
-
-    videoFile = join(videoFilePath, videoFileName)
-
+    
     print("videoFile:", videoFile)
     
     video = cv2.VideoCapture(videoFile)     # Read the video file
@@ -26,7 +24,7 @@ def readAndSaveVid(videoFileName, videoFilePath, saveFramePath):
             cv2.imwrite(join(saveFramePath,"frame%d.png" % count), frame)
             count += 1
 
-def processImages(framePath, binaryPath, top, bottom, left, right):
+''' def processImages(framePath, binaryPath, top, bottom, left, right, i, j, min_size, connectivity):
     import cv2
     import os
     from os.path import join
@@ -35,6 +33,10 @@ def processImages(framePath, binaryPath, top, bottom, left, right):
     
     allFramesName = [f for f in os.listdir(framePath) if (os.path.isfile(join(framePath, f)) and f.endswith(".png"))]
     
+    # NOTE: The best parameters are i=9 and j=5, gaussian adaptive thresholding
+    i = 9
+    j = 5
+    
     for frameName in allFramesName:
         print(frameName)
         
@@ -42,18 +44,59 @@ def processImages(framePath, binaryPath, top, bottom, left, right):
         
         frame = frame[top:bottom,left:right]    # Crop the frame from certre, original size is 400x800
         
-        # NOTE: The best parameters are i=9 and j=5, gaussian adaptive thresholding
-        i = 9
-        j = 5
-        
         th2 = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,i,j)
         cv2.imwrite(join(binaryPath, "frames", frameName), th2)
-            
-def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, top, bottom, left, right, cropOn):
+ '''
+def processImages(framePath, binaryPath, top, bottom, left, right, blockSize, constSub, min_size, connectivity):
     import cv2
     import os
     from os.path import join
     import numpy as np
+    import matplotlib.pyplot as plt
+    import skimage.measure as skm
+    # from skimage.morphology import remove_small_objects # Import the package for remove small objects
+    # Import package for progress bar
+    from tqdm import tqdm
+    
+    allFramesName = [f for f in os.listdir(framePath) if (os.path.isfile(join(framePath, f)) and f.endswith(".png"))]
+    
+    # Change below for loop to tqdm for loop to show progress bar with file name
+    for frameName in tqdm(allFramesName, desc="Processing frames"):
+        # print(frameName)
+         
+        frame = cv2.imread(join(framePath, frameName), 0)   # Read the frame as grayscale
+        
+        frame = frame[top:bottom,left:right]    # Crop the frame from certre, original size is 400x800
+        
+        ''' 
+        # NOTE: The best parameters are i=9 and j=5, gaussian adaptive thresholding
+        i = 41
+        j = 7
+        # NOTE: The best parameters are min_size=1000 and connectivity=1
+        min_size = 1
+        connectivity = 1
+        '''
+        
+        th2 = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,blockSize,constSub)
+        invth2 = 255 - th2   # Invert the image    
+        labelImg, count = skm.label(invth2, connectivity=connectivity, return_num=True)
+        
+        for i in range(1, count+1):         # For loop through all the labels
+            numPixels = np.sum(labelImg == i)   # Get the number of pixels in each label
+            if numPixels <= min_size:        # If the number of pixels is less than min_size, set the label to 0
+                invth2[labelImg == i] = 0
+                
+        th2 = 255 - invth2   # Invert the image back to normal
+        # print('file name : ', join(binaryPath, frameName))
+        cv2.imwrite(join(binaryPath, frameName), th2)
+   
+            
+def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, top, bottom, left, right, cropOn = True):
+    import cv2
+    import os
+    from os.path import join
+    import numpy as np
+    from tqdm import tqdm
     
     allFramesName_unorder = [f for f in os.listdir(binaryPath) if (os.path.isfile(join(binaryPath, f)) and f.endswith(".png"))]
     
@@ -85,8 +128,8 @@ def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, to
     vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
     video = cv2.VideoWriter(videoName_avi,vidCodec, fps, (videoWidth, videoHeight))
     
-    for frameNum in allFramesNum:
-        print(frameNum)
+    # Change below for loop to tqdm for loop to show progress bar with file name
+    for frameNum in tqdm(allFramesNum, desc="Making video"):
         frm_img = cv2.imread(join(framePath, nameTemplate % frameNum))
         
         if frm_img is None:     # Check if frame is read correctly
@@ -308,4 +351,3 @@ def roughWork():
     #     i = 9
     #     th2 = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,i,j)
     #     cv2.imwrite(join("thresh", "adaptiveGaussThreshold", "agt%d_%d.png" % (i,j)), th2)
-    
