@@ -37,14 +37,9 @@ class directories:
         return self.verDirPath
 
 def createDirectory(path, directoryName):
-        print("path: ", path)
-        print('Creating directory: ', directoryName)
         import os
         from os.path import join
         directory = join(path, directoryName)
         if not os.path.exists(directory):
             os.makedirs(directory)
-            
-        print('Directory created: ', directory)
-        print('Dir type: ', type(directory))
         return directory
