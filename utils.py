@@ -83,7 +83,7 @@ def processImages(framePath, binaryPath, params):
         cv2.imwrite(join(binaryPath, frameName), th2)
    
             
-def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, params, cropOn = True):
+def makeConcatVideos(lftFramesPath, rhtFramesPath, nameTemplate, videoName_avi, fps, params, cropOn = True):
     import cv2
     import os
     from os.path import join
@@ -95,7 +95,7 @@ def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, pa
     left    = params["left"]
     right   = params["right"]
     
-    allFramesName_unorder   = [f for f in os.listdir(binaryPath) if (os.path.isfile(join(binaryPath, f)) and f.endswith(".png"))]
+    allFramesName_unorder   = [f for f in os.listdir(rhtFramesPath) if (os.path.isfile(join(rhtFramesPath, f)) and f.endswith(".png"))]
     allFramesNum            = np.zeros(len(allFramesName_unorder))
     
     for i in range(len(allFramesName_unorder)):
@@ -103,11 +103,11 @@ def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, pa
         
     allFramesNum = np.sort(allFramesNum).astype(int)    # sort the frame numbers
         
-    tempImg1 = cv2.imread(join(binaryPath, nameTemplate % allFramesNum[0]), 0)
-    tempImg2 = cv2.imread(join(framePath, nameTemplate % allFramesNum[0]), 0)
+    tempImg2 = cv2.imread(join(lftFramesPath, nameTemplate % allFramesNum[0]), 0)
+    tempImg1 = cv2.imread(join(rhtFramesPath, nameTemplate % allFramesNum[0]), 0)
     
-    if cropOn:
-        tempImg2 = tempImg2[top:bottom,left:right]
+    # if cropOn:
+    #     tempImg2 = tempImg2[top:bottom,left:right]
     
     height1, width1 = tempImg1.shape
     height2, width2 = tempImg2.shape
@@ -120,21 +120,25 @@ def makeConcatVideos(framePath, binaryPath, nameTemplate, videoName_avi, fps, pa
     video = cv2.VideoWriter(videoName_avi,vidCodec, fps, (videoWidth, videoHeight))
     
     for frameNum in tqdm(allFramesNum, desc="Making video"):
-        frm_img = cv2.imread(join(framePath, nameTemplate % frameNum))
-        if frm_img is None:     # Check if frame is read correctly
+        lft_img = cv2.imread(join(lftFramesPath, nameTemplate % frameNum))
+        if lft_img is None:     # Check if frame is read correctly
             exit()
         
-        bin_img = cv2.imread(join(binaryPath, nameTemplate % frameNum))
+        # print('lft frame size:', lft_img.shape)
+        
+        bin_img = cv2.imread(join(rhtFramesPath, nameTemplate % frameNum))
         if bin_img is None:    # Check if frame is read correctly
             exit()
+        # print('rht frame size:', bin_img.shape)
         
-        if cropOn:
-            frm_img = frm_img[top:bottom,left:right, :]
+        # if cropOn:
+        #     lft_img = lft_img[top:bottom,left:right, :]
         
+        # print('updated lft frame size:', lft_img.shape)
         # make bin_img and frm_img height the same size as videoHeight by adding black pixels
         bin_img     = cv2.copyMakeBorder(bin_img, 0, videoHeight - height1, 0, 0, cv2.BORDER_CONSTANT, value=[0,0,0])
-        frm_img     = cv2.copyMakeBorder(frm_img, 0, videoHeight - height2, 0, 0, cv2.BORDER_CONSTANT, value=[0,0,0])
-        concat_img  = np.concatenate((frm_img, bin_img), axis=1)     # Concatenate the two images horizontally (i.e. side-by-side)
+        lft_img     = cv2.copyMakeBorder(lft_img, 0, videoHeight - height2, 0, 0, cv2.BORDER_CONSTANT, value=[0,0,0])
+        concat_img  = np.concatenate((lft_img, bin_img), axis=1)     # Concatenate the two images horizontally (i.e. side-by-side)
         video.write(concat_img) # Write the frame to video file
     cv2.destroyAllWindows()
     video.release() # Now the video is saved in the current directory
