@@ -178,6 +178,7 @@ def dropAnalysis(binaryPath, analysisPath, nameTemplate, params):
     import numpy as np
     import skimage.measure as skm
     import matplotlib.pyplot as plt
+    from tqdm import tqdm
     
     connectivity = params["connectivity"]
     allFrameNames_unorder = [f for f in os.listdir(binaryPath) if (os.path.isfile(join(binaryPath, f)) and f.endswith(".png"))]    # Read the binary images
@@ -194,7 +195,7 @@ def dropAnalysis(binaryPath, analysisPath, nameTemplate, params):
     frame_bubblePixSizes    = []           # pixel sizes of all the bubbles, frame wise
     frame_bubbleVertPos     = []            # vertical position of all the bubbles, frame wise
     
-    for frameNum in allFramesNum:
+    for frameNum in tqdm(allFramesNum, desc="Analyzing drops"):
         img = cv2.imread(join(binaryPath, nameTemplate % frameNum), 0)    # read the image
         img = cv2.bitwise_not(img)                          # invert the binary image
         
