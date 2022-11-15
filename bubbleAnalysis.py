@@ -1,46 +1,49 @@
 # Class for bubble analysis
 import os
 class bubbleAnalysis:
-    def __init__(self, newResultsDir, videoDirPath, videoName, baseResultDirPath, resultsDir):
+    def __init__(self, baseDataDir, baseResultDir, resultsDirIndex, dataDirIndex):
         # Create a dictionary to store all the path names
         self.DirNames = {
-            1: 'videoDirPath',
-            2: 'vidFramesDirPath',
-            3: 'baseResultDirPath',
-            4: 'resultDirPath'
+            1: 'baseDataDir',   # Input
+            2: 'Inp_VideoDir',  # Input
+            4: 'baseResultDir', # Output
+            5: 'resultsVerDir', # Output
         } 
+        self.inputPaths                 = {}
+        self.outputPaths                = {}
+        self.inputPaths[self.DirNames[1]]  = baseDataDir
+        self.inputPaths[self.DirNames[2]]  = os.path.join(self.inputPaths[self.DirNames[1]], 'video')
         
-        self.paths                      = {}            # Dictionary of paths to the directories and files
-        self.paths[self.DirNames[1]]    = videoDirPath 
-        self.paths[self.DirNames[2]]    = os.path.join(self.paths[self.DirNames[1]], 'frames')
-        self.paths[self.DirNames[3]]    = baseResultDirPath
-        self.videoName                  = videoName
-        self.subResultDirNames          = ['binary', 'binary/all', 'binary/all/frames', 'analysis', 'analysis/pixSize', 'analysis/vertPos', 'analysis/dynamicMarker']
+        self.outputPaths[self.DirNames[4]]    = baseResultDir
+        self.dataDirNames               = ['version_', 'frames']
+        self.resultsDirNames            = ['version_', 'binary', 'binary/all', 'binary/all/frames', 'analysis', 'analysis/pixSize', 'analysis/vertPos', 'analysis/dynamicMarker']
         self.videoFPS                   = 60.0          # FPS of the video
         self.frameNameTemplate          = 'frame%d.png' # Name template of the frames
         self.flowType                   = 2             # 1: fluidFlow1, 2: fluidFlow2
-        self.newResultsDir              = newResultsDir
+        self.resultsDirIndex            = resultsDirIndex
+        self.dataDirIndex               = dataDirIndex
+        self.videoFormat                = '.avi'
         
-        if self.newResultsDir:
-            self.resultsDirTemplate  = 'version'
-        else:    
-            if not os.path.exists(os.path.join(baseResultDirPath, resultsDir)):     # Check if the results directory exists
-                exit("ERROR: Results directory does not exist")
-            else:
-                self.resultsDirTemplate  = resultsDir
+        self.createDataDir()
         self.createResultDirs()
+        
+    def createDataDir(self):
+        from directories import directories
+        dirObj = directories(self.inputPaths[self.DirNames[1]], self.dataDirNames, self.dataDirIndex)
+        self.dataDirNames = dirObj.getDirNames()
+        self.inputPaths.update(dirObj.getDirPaths())
         
     def createResultDirs(self):
         from directories import directories
-        dirObj = directories(self.paths[self.DirNames[3]], self.resultsDirTemplate, self.subResultDirNames, self.newResultsDir)
-        
-        self.paths[self.DirNames[4]] = dirObj.getVerDirPath()
-        self.paths.update(dirObj.getSubDirPaths())
+        dirObj = directories(self.outputPaths[self.DirNames[4]], self.resultsDirNames, self.resultsDirIndex)
+        self.resultsDirNames = dirObj.getDirNames()
+        self.outputPaths.update(dirObj.getDirPaths())
         
     def getFramesFromVideo(self):
         from utils import readAndSaveVid
-        videoPath = os.path.join(self.paths[self.DirNames[1]], self.videoName)
-        readAndSaveVid(videoPath, self.paths[self.DirNames[2]])
+        videoDirPath = self.inputPaths[self.DirNames[2]]
+        saveFramePath = self.inputPaths['frames']
+        readAndSaveVid(videoDirPath, saveFramePath, self.videoFormat)
     
     def getBinaryImages(self):
         from utils import processImages
