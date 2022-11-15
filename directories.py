@@ -3,50 +3,42 @@ from os.path import join
 import re
 
 class directories:
-    def __init__(self, baseDirPath, versionDirTemplate, subDirNames, newResultsDir=True):
+    def __init__(self, baseDirPath, dirNames, versionIndex):
         self.baseDirPath    = baseDirPath
-        self.subDirNames    = subDirNames
-        self.subDirPaths    = {}
+        self.dirNames    = dirNames
+        self.dirPaths    = {}
+        self.verDirName = self.getVersionDirName(self.dirNames[0], versionIndex)
+        self.createDirs()
         
-        if newResultsDir:
-            ''' 
-            Create a new results directories
-            '''
-            self.verDirPath         = None
-            self.versionDirTemplate = versionDirTemplate
-            self.createVersionDirectory()
-        else:
-            ''' 
-            Use the existing results directory, sub directories are created if they do not exist already
-            ''' 
-            if not os.path.exists(os.path.join(baseDirPath, versionDirTemplate)):      # Check if the results directory exists
-                exit("ERROR: Results directory does not exist")
-            else:
-                self.verDirPath = join(baseDirPath, versionDirTemplate)
+    def getVersionDirName(self, template, versionIndex):
         
-        self.createSubDirs()
-                
-    def createVersionDirectory(self):
-        ResFolderName   = self.versionDirTemplate + '_' # example: 'version_'
-        lenFolderName   = len(ResFolderName)
-        dirlist         = [int(item[lenFolderName:]) for item in os.listdir(self.baseDirPath) if os.path.isdir(os.path.join(self.baseDirPath,item)) and re.search(ResFolderName, item) != None and len(item)> lenFolderName] 
-        
-        if len(dirlist) != 0:
-            latestVersion = max(dirlist)
-        else:
-            latestVersion = 0
-
-        self.verDirPath = createDirectory(self.baseDirPath, ResFolderName + str(latestVersion + 1))
-    
-    def createSubDirs(self):
-        for subDirName in self.subDirNames:
-            self.subDirPaths[subDirName] = createDirectory(self.verDirPath, subDirName)
+        if versionIndex == -1:        
+            lenFolderName   = len(template)
+            dirlist         = [int(item[lenFolderName:]) for item in os.listdir(self.baseDirPath) if os.path.isdir(os.path.join(self.baseDirPath,item)) and re.search(template, item) != None and len(item)> lenFolderName] 
             
-    def getSubDirPaths(self):
-        return self.subDirPaths
-    
-    def getVerDirPath(self):
-        return self.verDirPath
+            if len(dirlist) != 0:
+                latestVersion = max(dirlist) + 1
+            else:
+                latestVersion = 1
+        else:
+            latestVersion = versionIndex
+            
+        versionDirName = template + str(latestVersion)            
+        return versionDirName
+                
+    def createDirs(self):
+        # Create version directory if it does not exist
+        self.dirPaths[self.dirNames[0]] = createDirectory(self.baseDirPath, self.verDirName)
+        
+        # Create remaining sub directories wrt version directory
+        for subDirName in self.dirNames[1:]:
+            self.dirPaths[subDirName] = createDirectory(self.dirPaths[self.dirNames[0]], subDirName)
+            
+    def getDirPaths(self):
+        return self.dirPaths
+
+    def getDirNames(self):
+        return self.dirNames
 
 def createDirectory(path, directoryName):
         import os
