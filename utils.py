@@ -1,18 +1,46 @@
 
 # function to read and save video
-def readAndSaveVid(videoFile, saveFramePath):
+def readAndSaveVid(videoDirPath, saveFramePath, videoFormat):
     import cv2
-    from os.path import join
+    from os import listdir
+    from os.path import isfile, join
     
-    print("videoFile:", videoFile)
+    print("videoDirPath:", videoDirPath)
     
-    video = cv2.VideoCapture(videoFile)     # Read the video file
+    # Get list of all videos in the directory
+    allVideosName = [f for f in listdir(videoDirPath) if (isfile(join(videoDirPath, f)) and f.endswith(videoFormat))]
+    
+    if len(allVideosName) == 0:
+        print("No video found in the directory")
+        return
+    elif len(allVideosName) > 1:
+        print("More than one video found in the directory")
+        return
+    
+    video = cv2.VideoCapture(join(videoDirPath, allVideosName[0]))     # Read the video file
 
     if video.isOpened():
         print("Video file opened successfully")
     else:
         print("Error opening video file")
-
+    
+    # get the number of frames in the video
+    numFrames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+    
+    # Check if file already exists inside saveFramePath
+    numExistingFile = len([f for f in listdir(saveFramePath) if isfile(join(saveFramePath, f))])
+    if numExistingFile > 0:
+        print("Frames already exist inside {}.".format(saveFramePath))
+        
+        # Check if the number of frames in the video is same as the number of frames already saved
+        if numExistingFile == numFrames:
+            print("Number of frames in the video is same as the number of frames already saved.")
+            print("Skipping frame extraction.")
+            return
+        else:
+            print("Number of frames in the video is not same as the number of frames already saved.")
+            print("Overwriting existing frames.")
+    
     count = 0
     while video.isOpened():
         ret, frame = video.read()
