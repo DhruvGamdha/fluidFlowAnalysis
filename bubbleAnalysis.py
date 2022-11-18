@@ -16,8 +16,19 @@ class bubbleAnalysis:
         
         self.outputPaths[self.DirNames[4]]    = baseResultDir
         self.dataDirNames               = ['version_', 'frames']
-        self.resultsDirNames            = ['version_', 'binary', 'binary/all', 'binary/all/frames', 'analysis', 'analysis/pixSize', 'analysis/vertPos', 'analysis/dynamicMarker']
-        self.videoFPS                   = 60.0          # FPS of the video
+        self.resultsDirNames            = ['version_', 
+                                           'binary', 
+                                           'binary/all', 
+                                           'binary/all/frames', 
+                                           'analysis', 
+                                           'analysis/pixSize', 
+                                           'analysis/pixSize/frames', 
+                                           'analysis/vertPos', 
+                                           'analysis/vertPos/frames', 
+                                           'analysis/dynamicMarker', 
+                                           'analysis/dynamicMarker/frames']
+        
+        self.videoFPS                   = 30.0          # FPS of the video
         self.frameNameTemplate          = 'frame%d.png' # Name template of the frames
         self.flowType                   = 2             # 1: fluidFlow1, 2: fluidFlow2
         self.resultsDirIndex            = resultsDirIndex
@@ -53,19 +64,19 @@ class bubbleAnalysis:
     def createVideoFromFrames(self, frameDir, videoDir):
         from utils import makeSingleVideo
         from os.path import join
-        videoPath = join(self.paths[videoDir], 'video.mp4')
-        makeSingleVideo(self.paths[frameDir], self.frameNameTemplate, videoPath, self.videoFPS)
+        videoPath = join(self.outputPaths[videoDir], 'videoIsolated.mp4')
+        makeSingleVideo(self.outputPaths[frameDir], self.frameNameTemplate, videoPath, self.videoFPS)
           
     def createConcatVideo(self, lftFrameDir, rhtFrameDir, videoDir):
         from utils import makeConcatVideos
         params = self.flowTypeParams(self.flowType)
-        videoLocAndName_mp4 = os.path.join(self.paths[videoDir], 'video.mp4')
-        makeConcatVideos(self.paths[lftFrameDir], self.paths[rhtFrameDir], self.frameNameTemplate, videoLocAndName_mp4, self.videoFPS, params)    
+        videoLocAndName_mp4 = os.path.join(self.outputPaths[videoDir], 'videoPaired.mp4')
+        makeConcatVideos(self.outputPaths[lftFrameDir], self.outputPaths[rhtFrameDir], self.frameNameTemplate, videoLocAndName_mp4, self.videoFPS, params)    
     
     def binaryAnalysis(self):
         from utils import dropAnalysis
         params = self.flowTypeParams(self.flowType)
-        dropAnalysis(self.paths['binary/all/frames'], self.paths['analysis'], self.frameNameTemplate, params)
+        dropAnalysis(self.outputPaths['binary/all/frames'], self.outputPaths['analysis'], self.frameNameTemplate, params)
     
     def flowTypeParams(self, flowType):
         para = {}
