@@ -9,13 +9,16 @@ if __name__ == "__main__":
     dataDirVerNum       = 1     # Either -1 (for new data directory) or the version number
     
     analysis    = bubbleAnalysis(baseVideoPath, baseResPath, resultsDirVerNum, dataDirVerNum)
-    analysis.getFramesFromVideo()
+    # analysis.getFramesFromVideo()
     # analysis.getBinaryImages()
     # analysis.createVideoFromFrames('binary/all/frames', 'binary/all')
     # analysis.binaryAnalysis()
-    # analysis.createConcatVideo('binary/all/frames', 'analysis/dynamicMarker', 'analysis/dynamicMarker')
-    # analysis.createConcatVideo('binary/all/frames', 'analysis/pixSize', 'analysis/pixSize')
-    # analysis.createConcatVideo('binary/all/frames', 'analysis/vertPos', 'analysis/vertPos')
+    # analysis.createVideoFromFrames('analysis/pixSize/frames', 'analysis/pixSize')
+    # analysis.createVideoFromFrames('analysis/vertPos/frames', 'analysis/vertPos')
+    # analysis.createVideoFromFrames('analysis/dynamicMarker/frames', 'analysis/dynamicMarker')
+    analysis.createConcatVideo('binary/all/frames', 'analysis/dynamicMarker/frames', 'analysis/dynamicMarker')
+    # analysis.createConcatVideo('binary/all/frames', 'analysis/pixSize/frames', 'analysis/pixSize')
+    # analysis.createConcatVideo('binary/all/frames', 'analysis/vertPos/frames', 'analysis/vertPos')
     
     print("Done")
     
