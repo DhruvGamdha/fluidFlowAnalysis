@@ -1,3 +1,7 @@
+from os.path import join
+from object import Object
+from frame import Frame
+from video import Video
 
 # function to read and save video
 def readAndSaveVid(videoDirPath, saveFramePath, videoFormat):
@@ -204,89 +208,101 @@ def makeSingleVideo(framePath, nameTemplate, videoPath, fps):
     video.release()            # Now the video is saved in the current directory
 
 def dropAnalysis(binaryPath, analysisPath, nameTemplate, params):
-    import cv2
-    import os
-    from os.path import join
+    # import cv2
     import numpy as np
-    import skimage.measure as skm
+    # import skimage.measure as skm
     import matplotlib.pyplot as plt
     from tqdm import tqdm
     
-    connectivity = params["connectivity"]
-    allFrameNames_unorder = [f for f in os.listdir(binaryPath) if (os.path.isfile(join(binaryPath, f)) and f.endswith(".png"))]    # Read the binary images
-    
-    allFramesNum = np.zeros(len(allFrameNames_unorder))  # create numpy array to store the frame numbers
-    
-    # use the name template of type "<string>%d.png" to extract the frame number from each frame name
-    for i in range(len(allFrameNames_unorder)):
-        allFramesNum[i] = int(allFrameNames_unorder[i][len(nameTemplate)-6:-4])
-    
-    allFramesNum = np.sort(allFramesNum).astype(int)        # sort the frame numbers
-    
-    frame_bubbleCount       = []              # bubble count, frame wise
-    frame_bubblePixSizes    = []           # pixel sizes of all the bubbles, frame wise
-    frame_bubbleVertPos     = []            # vertical position of all the bubbles, frame wise
-    
+    allFramesNum            = getFrameNumbers_ordered(binaryPath, nameTemplate)
+    connectivity            = params["connectivity"]
+    video = Video()
     for frameNum in tqdm(allFramesNum, desc="Analyzing drops"):
-        img = cv2.imread(join(binaryPath, nameTemplate % frameNum), 0)    # read the image
-        img = cv2.bitwise_not(img)                          # invert the binary image
-        
-        labelImg, count = skm.label(img, connectivity=connectivity, return_num=True)
-        frame_bubbleCount.append(count)
-        
-        bubble_pixSize = []         # bubble pixel size, bubble wise
-        bubble_vertPos = []        # bubble highest pixel vertical position, bubble wise
-        
+        labelImg, count, imgShape = imgSegmentation(binaryPath, nameTemplate, frameNum, connectivity)
+        frame = Frame()
         for i in range(1,count+1):
             rows, cols = np.where(labelImg == i)
-            bubble_pixSize.append(len(rows))        # adding ith bubble pixel size
-            vertPos = np.min(rows)                  # finding the highest pixel vertical position
-            vertPos = img.shape[0] - vertPos        # converting to the original image coordinates
-            bubble_vertPos.append(vertPos)          # adding ith bubble highest pixel position
+            # Get the position (x, y) of the top left bounding box around the bubble, origin at the bottom left corner
+            y = imgShape[0] - np.min(rows)
+            x = np.min(cols)
+            obj = Object(x, y, len(rows))
+            frame.addObject(obj)
         
-        frame_bubblePixSizes.append(bubble_pixSize)     # adding all bubble pixel sizes in the frame
-        frame_bubbleVertPos.append(bubble_vertPos)      # adding all bubble highest pixel positions in the frame
-        
-        # Plot the bubble pixel sizes, with x axis label as the bubble number, plot title as frame number, set the x and y axis limits
-        plt.plot(bubble_pixSize)
-        plt.xlabel("Bubble Number")
-        plt.ylabel("Bubble Pixel Size")
-        plt.title("bubble sizes in frame number: " + str(frameNum))
-        plt.xlim(0, 50)
-        plt.ylim(0, 1000)
-        plt.savefig(join(analysisPath, "pixSize", "frames", "frame" + str(frameNum) + ".png"), dpi=200)
-        # plt.show()
-        plt.close()
-        
-        # scatter plot the bubble vertical position, with x axis label as the bubble number, plot title as frame number, set the x and y axis limits
-        plt.scatter(range(1, count+1), bubble_vertPos)
-        # plt.plot(bubble_vertPos)
-        plt.xlabel("Bubble Number")
-        plt.ylabel("Bubble Vertical Position")
-        plt.title("bubble positions in frame number: " + str(frameNum))
-        plt.xlim(0, 50)
-        plt.ylim(0, img.shape[0])
-        plt.savefig(join(analysisPath, "vertPos", "frames", "frame" + str(frameNum) + ".png"), dpi=200)
-        # plt.show()
-        plt.close()
-        
-        # scatter plot the bubble vertical position, with x axis label as the bubble number, plot title as frame number, set the x and y axis limits
-        plt.scatter(range(1, count+1), bubble_vertPos, s=bubble_pixSize)
-        plt.xlabel("Bubble Number")
-        plt.ylabel("Bubble Vertical Position")
-        plt.title("bubble positions in frame number: " + str(frameNum))
-        plt.xlim(0, 50)
-        plt.ylim(0, img.shape[0])
-        plt.savefig(join(analysisPath, "dynamicMarker", "frames", "frame" + str(frameNum) + ".png"), dpi=200)
-        # plt.show()
-        plt.close()
+        video.addFrame(frame)
+        video.addFrameObjCount(count)
+        plotFrameObjectAnalysis(frame, frameNum, count, imgShape, analysisPath)
     
     # Plot the bubble count, frame wise
-    plt.plot(frame_bubbleCount)
+    plt.plot(video.getObjCountList())
     plt.xlabel("Frame Number")
     plt.ylabel("Bubble Count")
     plt.title("bubble count in the video")
     plt.savefig(join(analysisPath, "frame_bubbleCount.png"), dpi=200)
     plt.close()
     
+    plt.close('all')
+    
+def imgSegmentation(binaryPath, nameTemplate, frameNum, connectivity):
+    import cv2
+    import skimage.measure as skm
+    
+    img = cv2.imread(join(binaryPath, nameTemplate % frameNum), 0)    # read the image
+    img = cv2.bitwise_not(img)                          # invert the binary image
+    imgShape = img.shape
+    labelImg, count = skm.label(img, connectivity=connectivity, return_num=True)
+    
+    return labelImg, count, imgShape
+
+def getFrameNumbers_ordered(binaryPath, nameTemplate):
+    import os
+    import numpy as np
+    
+    allFrameNames_unorder   = [f for f in os.listdir(binaryPath) if (os.path.isfile(join(binaryPath, f)) and f.endswith(".png"))]    # Read the binary images
+    allFramesNum            = np.zeros(len(allFrameNames_unorder))  # create numpy array to store the frame numbers
+    
+    for i in range(len(allFrameNames_unorder)):     # use the name template of type "<string>%d.png" to extract the frame number from each frame name
+        allFramesNum[i] = int(allFrameNames_unorder[i][len(nameTemplate)-6:-4])
+    
+    allFramesNum = np.sort(allFramesNum).astype(int)        # sort the frame numbers
+    return allFramesNum
+
+def plotFrameObjectAnalysis(frameObj, frameNum, numBubbles, imgShape, analysisPath):
+    import matplotlib.pyplot as plt
+    
+    _, bubble_vertPos   = frameObj.getObjectPositionList()
+    bubble_pixSize      = frameObj.getObjectSizeList()
+    
+    
+    # Plot the bubble pixel sizes, with x axis label as the bubble number, plot title as frame number, set the x and y axis limits
+    plt.plot(bubble_pixSize)
+    plt.xlabel("Bubble Number")
+    plt.ylabel("Bubble Pixel Size")
+    plt.title("bubble sizes in frame number: " + str(frameNum))
+    plt.xlim(0, 50)
+    plt.ylim(0, 1000)
+    plt.savefig(join(analysisPath, "pixSize", "frames", "frame" + str(frameNum) + ".png"), dpi=200)
+    # plt.show()
+    plt.close()
+    
+    # scatter plot the bubble vertical position, with x axis label as the bubble number, plot title as frame number, set the x and y axis limits
+    plt.scatter(range(1, numBubbles+1), bubble_vertPos)
+    plt.xlabel("Bubble Number")
+    plt.ylabel("Bubble Vertical Position")
+    plt.title("bubble positions in frame number: " + str(frameNum))
+    plt.xlim(0, 50)
+    plt.ylim(0, imgShape[0])
+    plt.savefig(join(analysisPath, "vertPos", "frames", "frame" + str(frameNum) + ".png"), dpi=200)
+    # plt.show()
+    plt.close()
+    
+    # scatter plot the bubble vertical position, with x axis label as the bubble number, plot title as frame number, set the x and y axis limits
+    plt.scatter(range(1, numBubbles+1), bubble_vertPos, s=bubble_pixSize)
+    plt.xlabel("Bubble Number")
+    plt.ylabel("Bubble Vertical Position")
+    plt.title("bubble positions in frame number: " + str(frameNum))
+    plt.xlim(0, 50)
+    plt.ylim(0, imgShape[0])
+    plt.savefig(join(analysisPath, "dynamicMarker", "frames", "frame" + str(frameNum) + ".png"), dpi=200)
+    # plt.show()
+    plt.close()
     plt.close('all')
