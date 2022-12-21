@@ -59,7 +59,7 @@ class bubbleAnalysis:
     def getBinaryImages(self):
         from utils import processImages
         params = self.flowTypeParams(self.flowType)
-        processImages(self.paths[self.DirNames[2]], self.paths['binary/all/frames'], params)
+        processImages(self.paths[self.DirNames[2]], self.paths['binary/all/frames'], self.frameNameTemplate, params)
         
     def createVideoFromFrames(self, frameDir, videoDir):
         from utils import makeSingleVideo

@@ -1,60 +1,44 @@
-from os.path import join
+import os
+from os import listdir
+from os.path import join, isfile
 from object import Object
 from frame import Frame
 from video import Video
+import cv2
+import numpy as np
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+import skimage.measure as skm
 
 # function to read and save video
 def readAndSaveVid(videoDirPath, saveFramePath, videoFormat):
-    import cv2
-    from os import listdir
-    from os.path import isfile, join
-    
-    print("videoDirPath:", videoDirPath)
-    
-    # Get list of all videos in the directory
-    allVideosName = [f for f in listdir(videoDirPath) if (isfile(join(videoDirPath, f)) and f.endswith(videoFormat))]
-    
-    if len(allVideosName) == 0:
-        print("No video found in the directory")
-        return
-    elif len(allVideosName) > 1:
-        print("More than one video found in the directory")
+    allVideosName = [f for f in listdir(videoDirPath) if (isfile(join(videoDirPath, f)) and f.endswith(videoFormat))]   # Get all videos in the folder
+    if len(allVideosName) != 1:
+        print("Number of videos in the folder is not 1")
         return
     
-    video = cv2.VideoCapture(join(videoDirPath, allVideosName[0]))     # Read the video file
-
-    if video.isOpened():
-        print("Video file opened successfully")
-    else:
+    video = cv2.VideoCapture(join(videoDirPath, allVideosName[0]))      # Read the video file
+    if (video.isOpened()== False):                                      # Check if video file is opened successfully
         print("Error opening video file")
+        return
     
-    # get the number of frames in the video
-    numFrames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+    numFrames       = int(video.get(cv2.CAP_PROP_FRAME_COUNT))          # Get number of frames in the video
+    numExistingFile = len([f for f in listdir(saveFramePath) if (isfile(join(saveFramePath, f)) and f.endswith(".png"))])    # Get number of frames already saved
+    if numExistingFile == numFrames:
+        print("Number of frames in the video is same as the number of frames already saved in {}.".format(saveFramePath))
+        print("Skipping frame extraction.")
+        return
     
-    # Check if file already exists inside saveFramePath
-    numExistingFile = len([f for f in listdir(saveFramePath) if isfile(join(saveFramePath, f))])
-    if numExistingFile > 0:
-        print("Frames already exist inside {}.".format(saveFramePath))
-        
-        # Check if the number of frames in the video is same as the number of frames already saved
-        if numExistingFile == numFrames:
-            print("Number of frames in the video is same as the number of frames already saved.")
-            print("Skipping frame extraction.")
-            return
-        else:
-            print("Number of frames in the video is not same as the number of frames already saved.")
-            print("Overwriting existing frames.")
-    
+    print("If frames already exist inside {}, they will be overwritten.".format(saveFramePath))
     count = 0
     while video.isOpened():
         ret, frame = video.read()
         if not ret:         # Check if frame is read correctly
             print("Can't receive frame (stream end?). Exiting ...")
             break
-        else: # Save the frame as a .png file
-            print("frame number:", count)
-            cv2.imwrite(join(saveFramePath,"frame%d.png" % count), frame)
-            count += 1
+        print("frame number:", count)
+        cv2.imwrite(join(saveFramePath,"frame%d.png" % count), frame)
+        count += 1
 
 ''' def processImages(framePath, binaryPath, top, bottom, left, right, i, j, min_size, connectivity):
     import cv2
@@ -79,94 +63,43 @@ def readAndSaveVid(videoDirPath, saveFramePath, videoFormat):
         th2 = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,i,j)
         cv2.imwrite(join(binaryPath, "frames", frameName), th2)
  '''
-def processImages(framePath, binaryPath, params):
-    import cv2
-    import os
-    from os.path import join
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import skimage.measure as skm
-    from tqdm import tqdm
-    
-    top     = params["top"]
-    bottom  = params["bottom"]
-    left    = params["left"]
-    right   = params["right"]
-    blockSize   = params["blockSize"]
-    constSub    = params["constSub"]
-    min_size    = params["min_size"]
-    connectivity    = params["connectivity"]
-    
-    allFramesName = [f for f in os.listdir(framePath) if (os.path.isfile(join(framePath, f)) and f.endswith(".png"))]
-    
-    for frameName in tqdm(allFramesName, desc="Processing frames"):
-        frame           = cv2.imread(join(framePath, frameName), 0)
-        frame           = frame[top:bottom,left:right]        
-        th2             = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,blockSize,constSub)
+def processImages(framePath, binaryPath, nameTemplate, params):
+    allFramesNum    = getFrameNumbers_ordered(framePath, nameTemplate)
+    for frameNum in tqdm(allFramesNum, desc="Processing frames"):
+        frame           = cv2.imread(join(framePath, nameTemplate % frameNum), 0)
+        frame           = frame[    params["top"]:params["bottom"]  ,   params["left"]:params["right"]  ]        
+        th2             = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,    params["blockSize"],    params["constSub"])
         invth2          = 255 - th2    
-        labelImg, count = skm.label(invth2, connectivity=connectivity, return_num=True)
+        labelImg, count = skm.label(invth2, connectivity=params["connectivity"], return_num=True)
         
         for i in range(1, count+1):
             numPixels = np.sum(labelImg == i)
-            if numPixels <= min_size:
+            if numPixels <= params["min_size"]:
                 invth2[labelImg == i] = 0
                 
         th2 = 255 - invth2
-        cv2.imwrite(join(binaryPath, frameName), th2)
-   
-            
+        cv2.imwrite(join(binaryPath, nameTemplate % frameNum), th2)
+
 def makeConcatVideos(lftFramesPath, rhtFramesPath, nameTemplate, videoName_avi, fps, params, cropOn = True):
-    import cv2
-    import os
-    from os.path import join
-    import numpy as np
-    from tqdm import tqdm
-    
-    top     = params["top"]
-    bottom  = params["bottom"]
-    left    = params["left"]
-    right   = params["right"]
-    
-    allFramesName_unorder   = [f for f in os.listdir(rhtFramesPath) if (os.path.isfile(join(rhtFramesPath, f)) and f.endswith(".png"))]
-    allFramesNum            = np.zeros(len(allFramesName_unorder))
-    
-    for i in range(len(allFramesName_unorder)):
-        allFramesNum[i] = int(allFramesName_unorder[i][len(nameTemplate)-6:-4])
-        
-    allFramesNum = np.sort(allFramesNum).astype(int)    # sort the frame numbers
-        
+    allFramesNum    = getFrameNumbers_ordered(rhtFramesPath, nameTemplate)
     tempImg2 = cv2.imread(join(lftFramesPath, nameTemplate % allFramesNum[0]), 0)
     tempImg1 = cv2.imread(join(rhtFramesPath, nameTemplate % allFramesNum[0]), 0)
     
-    # if cropOn:
-    #     tempImg2 = tempImg2[top:bottom,left:right]
-    
     height1, width1 = tempImg1.shape
     height2, width2 = tempImg2.shape
-    
-    videoWidth = width1 + width2            # width of the video
-    videoHeight = max(height1, height2)     # height of the video
+    videoWidth  = width1 + width2       # width of the video
+    videoHeight = max(height1, height2) # height of the video
     
     # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
-    vidCodec = cv2.VideoWriter_fourcc(*'mp4v')  # codec for .mp4 file
-    video = cv2.VideoWriter(videoName_avi,vidCodec, fps, (videoWidth, videoHeight))
+    vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')  # codec for .mp4 file
+    video       = cv2.VideoWriter(videoName_avi,vidCodec, fps, (videoWidth, videoHeight))
     
     for frameNum in tqdm(allFramesNum, desc="Making video"):
         lft_img = cv2.imread(join(lftFramesPath, nameTemplate % frameNum))
-        if lft_img is None:     # Check if frame is read correctly
-            exit()
-        
-        # print('lft frame size:', lft_img.shape)
-        
         bin_img = cv2.imread(join(rhtFramesPath, nameTemplate % frameNum))
-        if bin_img is None:    # Check if frame is read correctly
+        if lft_img is None or bin_img is None:
+            print("Can't receive frame (stream end?). Exiting ...")
             exit()
-        # print('rht frame size:', bin_img.shape)
-        
-        # if cropOn:
-        #     lft_img = lft_img[top:bottom,left:right, :]
-        
-        # print('updated lft frame size:', lft_img.shape)
         # make bin_img and frm_img height the same size as videoHeight by adding black pixels
         bin_img     = cv2.copyMakeBorder(bin_img, 0, videoHeight - height1, 0, 0, cv2.BORDER_CONSTANT, value=[0,0,0])
         lft_img     = cv2.copyMakeBorder(lft_img, 0, videoHeight - height2, 0, 0, cv2.BORDER_CONSTANT, value=[0,0,0])
@@ -176,21 +109,7 @@ def makeConcatVideos(lftFramesPath, rhtFramesPath, nameTemplate, videoName_avi, 
     video.release() # Now the video is saved in the current directory
 
 def makeSingleVideo(framePath, nameTemplate, videoPath, fps):
-    
-    import cv2
-    import os
-    from os.path import join
-    import numpy as np
-    from tqdm import tqdm
-    
-    allFramesName_unorder   = [f for f in os.listdir(framePath) if (os.path.isfile(join(framePath, f)) and f.endswith(".png"))]
-    allFramesNum            = np.zeros(len(allFramesName_unorder))  # create numpy array to store the frame numbers
-    
-    # use the name template of type "<string>%d.png" to extract the frame number from each frame name
-    for i in range(len(allFramesName_unorder)):
-        allFramesNum[i] = int(allFramesName_unorder[i][len(nameTemplate)-6:-4])
-        
-    allFramesNum    = np.sort(allFramesNum).astype(int)    # sort the frame numbers
+    allFramesNum    = getFrameNumbers_ordered(framePath, nameTemplate)
     tempImg         = cv2.imread(join(framePath, nameTemplate % allFramesNum[0]), 0)
     height, width   = tempImg.shape
     
@@ -208,12 +127,6 @@ def makeSingleVideo(framePath, nameTemplate, videoPath, fps):
     video.release()            # Now the video is saved in the current directory
 
 def dropAnalysis(binaryPath, analysisPath, nameTemplate, params):
-    # import cv2
-    import numpy as np
-    # import skimage.measure as skm
-    import matplotlib.pyplot as plt
-    from tqdm import tqdm
-    
     allFramesNum            = getFrameNumbers_ordered(binaryPath, nameTemplate)
     connectivity            = params["connectivity"]
     video = Video()
@@ -243,36 +156,25 @@ def dropAnalysis(binaryPath, analysisPath, nameTemplate, params):
     plt.close('all')
     
 def imgSegmentation(binaryPath, nameTemplate, frameNum, connectivity):
-    import cv2
-    import skimage.measure as skm
-    
     img = cv2.imread(join(binaryPath, nameTemplate % frameNum), 0)    # read the image
-    img = cv2.bitwise_not(img)                          # invert the binary image
+    img = cv2.bitwise_not(img)                                      # invert the binary image
     imgShape = img.shape
     labelImg, count = skm.label(img, connectivity=connectivity, return_num=True)
-    
     return labelImg, count, imgShape
 
 def getFrameNumbers_ordered(binaryPath, nameTemplate):
-    import os
-    import numpy as np
-    
     allFrameNames_unorder   = [f for f in os.listdir(binaryPath) if (os.path.isfile(join(binaryPath, f)) and f.endswith(".png"))]    # Read the binary images
     allFramesNum            = np.zeros(len(allFrameNames_unorder))  # create numpy array to store the frame numbers
-    
+
     for i in range(len(allFrameNames_unorder)):     # use the name template of type "<string>%d.png" to extract the frame number from each frame name
         allFramesNum[i] = int(allFrameNames_unorder[i][len(nameTemplate)-6:-4])
-    
     allFramesNum = np.sort(allFramesNum).astype(int)        # sort the frame numbers
     return allFramesNum
 
 def plotFrameObjectAnalysis(frameObj, frameNum, numBubbles, imgShape, analysisPath):
-    import matplotlib.pyplot as plt
-    
     _, bubble_vertPos   = frameObj.getObjectPositionList()
     bubble_pixSize      = frameObj.getObjectSizeList()
-    
-    
+
     # Plot the bubble pixel sizes, with x axis label as the bubble number, plot title as frame number, set the x and y axis limits
     plt.plot(bubble_pixSize)
     plt.xlabel("Bubble Number")
