@@ -1,40 +1,75 @@
 import os
 from os.path import join
 import re
+import pathlib as pl
 
 class directories:
-    def __init__(self, baseDirPath, dirNames, versionIndex):
-        self.baseDirPath    = baseDirPath
-        self.dirNames       = dirNames
-        self.dirPaths       = {}
-        self.verDirName     = self.getVersionDirName(self.dirNames[0], versionIndex)
-        self.createDirs()
+    def __init__(self, baseDirPath, versionDirTemplate, versionDirIndex, dirs_wrtVersionDir):
+        self.baseDirPathObj     = pl.Path(baseDirPath)
+        self.versionDirTemplate = versionDirTemplate     # template: 'version_{:03d}'
+        self.versionDirIndex    = self.updateTemplateIndex(versionDirIndex)      # Update function to be compatible with pathlib library
+        self.versionDirName     = self.versionDirTemplate.format(self.versionDirIndex)
+        self.versionDirPathObj  = self.baseDirPathObj / self.versionDirName
+        self.pathDict           = dict.fromkeys(dirs_wrtVersionDir)       # Key: directory name, Value: pathlib object of directory
+        self.generateDirectories()
     
-    def getVersionDirName(self, template, versionIndex):
+    def updateTemplateIndex(self, versionIndex):
         if versionIndex == -1:
-            lenFolderName   = len(template)
-            dirlist         = [int(item[lenFolderName:]) for item in os.listdir(self.baseDirPath) if os.path.isdir(os.path.join(self.baseDirPath,item)) and re.search(template, item) != None and len(item)> lenFolderName] 
-            versionIndex    = 1
-            if len(dirlist) != 0:
-                versionIndex = max(dirlist) + 1
+            versionIndex = 0
+            while True:
+                versionIndex += 1
+                if not (self.baseDirPathObj / self.versionDirTemplate.format(versionIndex)).exists():
+                    break
+        return versionIndex
+                 
+    def generateDirectories(self):
+        # Create the version directory
+        self.versionDirPathObj.mkdir(parents=True, exist_ok=True)
         
-        latestVersion   = versionIndex
-        versionDirName  = template + str(latestVersion)            
-        return versionDirName
-                
-    def createDirs(self):
-        self.dirPaths[self.dirNames[0]] = self.createDirectory(self.baseDirPath, self.verDirName)   # Create version directory
-        for subDirName in self.dirNames[1:]:                                                        # Create sub directories wrt version directory
-            self.dirPaths[subDirName] = self.createDirectory(self.dirPaths[self.dirNames[0]], subDirName)
+        # Create the directories inside version directory
+        keys = self.pathDict.keys()
+        for subDirName in keys:
+            self.pathDict[subDirName] = self.versionDirPathObj / subDirName
+            self.pathDict[subDirName].mkdir(parents=True, exist_ok=True)
+    
+    def getPathDict(self):
+        return self.pathDict
+
+    def getPathDictKeys(self):
+        return self.pathDict.keys()
+    
+    def getVerDirName(self):
+        return self.versionDirName
+    
+    def getVerDirPathObj(self):
+        return self.versionDirPathObj
+    
+    def getBaseDirPathObj(self):
+        return self.baseDirPathObj
+
+    def getDirPathObj(self, key):
+        if key == '__base__':
+            return self.baseDirPathObj
+        if key == '__template__':
+            return self.versionDirPathObj
+        if key in self.pathDict.keys():
+            return self.pathDict[key]
+        else:
+            print('Invalid key')
+            return
+    
+    def addDir_key(self, wrtKey, key):
+        if wrtKey != '__base__' or wrtKey != '__template__':
+            print('Invalid wrtKey')
+            return
+        
+        if key in self.pathDict.keys():
+            print('Key already exists')
+            return
+        
+        if wrtKey == '__base__':
+            self.pathDict[key] = self.baseDirPathObj / key
+        if wrtKey == '__template__':
+            self.pathDict[key] = self.versionDirPathObj / key
             
-    def getDirPaths(self):
-        return self.dirPaths
-
-    def getDirNames(self):
-        return self.dirNames
-
-    def createDirectory(self, path, directoryName):
-        directory = join(path, directoryName)
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        return directory
+        self.pathDict[key].mkdir(parents=True, exist_ok=True)
