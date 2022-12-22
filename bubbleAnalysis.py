@@ -1,12 +1,12 @@
 # Class for bubble analysis
 import os
 class bubbleAnalysis:
-    def __init__(self, baseDataDir, baseResultDir, resultsDirIndex, dataDirIndex):
+    def __init__(self, fps, frameNameTemplate, flowType, videoFormat):
         # Create a dictionary to store all the path names
-        self.videoFPS                   = 30.0          # FPS of the video
-        self.frameNameTemplate          = 'frame{:04d}.png' # Name template of the frames
-        self.flowType                   = 2             # 1: fluidFlow1, 2: fluidFlow2
-        self.videoFormat                = '.avi'
+        self.videoFPS                   = fps          # FPS of the video
+        self.frameNameTemplate          = frameNameTemplate # Name template of the frames
+        self.flowType                   = flowType             # 1: fluidFlow1, 2: fluidFlow2
+        self.videoFormat                = videoFormat
         
     def getFramesFromVideo(self, videoFramesDir_pathObj):
         from utils import readAndSaveVid

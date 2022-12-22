@@ -46,11 +46,17 @@ def run():
                                     'analysis/vertPos', 
                                     'analysis/vertPos/frames', 
                                     'analysis/dynamicMarker', 
-                                    'analysis/dynamicMarker/frames']    
+                                    'analysis/dynamicMarker/frames']  
     
     inpDirObj = directories(baseInpPth, inpTemplate, inpTempIndex, inpDirsToCreate_wrtTemplate)  # Create input directories
     # create original/frames directory wrt base directory
     inpDirObj.addDir_usingKey('__base__', 'original/frames')
     
     outpDirObj = directories(baseOutpPth, outpTemplate, outpTempIndex, outpDirsToCreate_wrtTemplate)  # Create output directories
+    
+    videoFPS = 30
+    frameNameTemplate = 'frame_{:04d}.png'
+    flowType = 2
+    inpVideoFormat = '.avi'
+    analysis    = bubbleAnalysis(videoFPS, frameNameTemplate, flowType, inpVideoFormat)
     
