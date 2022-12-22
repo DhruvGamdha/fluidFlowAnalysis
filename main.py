@@ -1,5 +1,5 @@
 from bubbleAnalysis import bubbleAnalysis
-
+# import pathlib as pl
 # main function
 if __name__ == "__main__":
     baseVideoPath= 'data/fluidFlow2/'
@@ -21,4 +21,36 @@ if __name__ == "__main__":
     # analysis.createConcatVideo('binary/all/frames', 'analysis/vertPos/frames', 'analysis/vertPos')
     
     print("Done")
+    
+
+def run():
+    # temp main function
+    from directories import directories
+    baseInpPth    = 'data/fluidFlow2/'
+    inpTemplate   = 'version_{:02d}'
+    inpTempIndex  = 1
+    inpDirsToCreate_wrtTemplate = [ 'all',
+                                    'all/frames',
+                                    'set1',
+                                    'set1/frames']
+    
+    baseOutpPth   = 'results/fluidFlow2/'
+    outpTemplate  = 'version_{:02d}'
+    outpTempIndex = 1
+    outpDirsToCreate_wrtTemplate= [ 'binary', 
+                                    'binary/all', 
+                                    'binary/all/frames', 
+                                    'analysis', 
+                                    'analysis/pixSize', 
+                                    'analysis/pixSize/frames', 
+                                    'analysis/vertPos', 
+                                    'analysis/vertPos/frames', 
+                                    'analysis/dynamicMarker', 
+                                    'analysis/dynamicMarker/frames']    
+    
+    inpDirObj = directories(baseInpPth, inpTemplate, inpTempIndex, inpDirsToCreate_wrtTemplate)  # Create input directories
+    # create original/frames directory wrt base directory
+    inpDirObj.addDir_usingKey('__base__', 'original/frames')
+    
+    outpDirObj = directories(baseOutpPth, outpTemplate, outpTempIndex, outpDirsToCreate_wrtTemplate)  # Create output directories
     

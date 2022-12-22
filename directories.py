@@ -6,7 +6,7 @@ import pathlib as pl
 class directories:
     def __init__(self, baseDirPath, versionDirTemplate, versionDirIndex, dirs_wrtVersionDir):
         self.baseDirPathObj     = pl.Path(baseDirPath)
-        self.versionDirTemplate = versionDirTemplate     # template: 'version_{:03d}'
+        self.versionDirTemplate = versionDirTemplate     # template: 'version_{:02d}'
         self.versionDirIndex    = self.updateTemplateIndex(versionDirIndex)      # Update function to be compatible with pathlib library
         self.versionDirName     = self.versionDirTemplate.format(self.versionDirIndex)
         self.versionDirPathObj  = self.baseDirPathObj / self.versionDirName
@@ -58,7 +58,7 @@ class directories:
             print('Invalid key')
             return
     
-    def addDir_key(self, wrtKey, key):
+    def addDir_usingKey(self, wrtKey, key):
         if wrtKey != '__base__' or wrtKey != '__template__':
             print('Invalid wrtKey')
             return
