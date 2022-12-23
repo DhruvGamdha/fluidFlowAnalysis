@@ -19,7 +19,7 @@ def readAndSaveVid(videoFramesPathObj, videoFormat, frameNameTemplate):
         print("Number of videos in the folder is not 1")
         return
     
-    video = cv2.VideoCapture(allVideoFiles[0])      # Read the video file
+    video = cv2.VideoCapture(str(allVideoFiles[0]))      # Read the video file
     if (video.isOpened()== False):                                      # Check if video file is opened successfully
         print("Error opening video file")
         return
@@ -39,7 +39,7 @@ def readAndSaveVid(videoFramesPathObj, videoFormat, frameNameTemplate):
             print("Can't receive frame (stream end?). Exiting ...")
             break
         print("frame number:", count)
-        cv2.imwrite(videoFramesPathObj/frameNameTemplate.format(count), frame)
+        cv2.imwrite(str(videoFramesPathObj/frameNameTemplate.format(count)) , frame )
         count += 1
         
 def cropFrames(origFrameDir_pathObj, croppedFrameDir_pathObj, frameNameTemplate, params):
@@ -54,12 +54,12 @@ def cropFrames(origFrameDir_pathObj, croppedFrameDir_pathObj, frameNameTemplate,
     for frameNum in allFramesNum:
         frame = cv2.imread(str(origFrameDir_pathObj/frameNameTemplate.format(frameNum)), 0)
         frame = frame[  params["top"]   :   params["bottom"]    ,   params["left"]  :   params["right"] ]
-        cv2.imwrite(croppedFrameDir_pathObj/frameNameTemplate.format(frameNum), frame)
+        cv2.imwrite(str(croppedFrameDir_pathObj/frameNameTemplate.format(frameNum)) , frame )
 
 def processImages(originalFrameDir_pathObj, binaryFrameDir_pathObj, nameTemplate, params):
     allFramesNum    = getFrameNumbers_ordered(originalFrameDir_pathObj, nameTemplate)
     for frameNum in tqdm(allFramesNum, desc="Processing frames"):
-        frame           = cv2.imread(originalFrameDir_pathObj / nameTemplate.format(frameNum), 0)
+        frame           = cv2.imread(str(originalFrameDir_pathObj/nameTemplate.format(frameNum)), 0)
         th2             = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,    params["blockSize"],    params["constSub"])
         invth2          = 255 - th2    
         labelImg, count = skm.label(invth2, connectivity=params["connectivity"], return_num=True)
@@ -70,12 +70,12 @@ def processImages(originalFrameDir_pathObj, binaryFrameDir_pathObj, nameTemplate
                 invth2[labelImg == i] = 0
                 
         th2 = 255 - invth2
-        cv2.imwrite(binaryFrameDir_pathObj / nameTemplate.format(frameNum), th2)
+        cv2.imwrite(str(binaryFrameDir_pathObj/nameTemplate.format(frameNum)), th2)
 
 def makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, nameTemplate, videoDir_pathObj, fps, params):    
     allFramesNum    = getFrameNumbers_ordered(rhtFrameDir_pathObj, nameTemplate)
-    tempImg2 = cv2.imread(lftFrameDir_pathObj / nameTemplate.format(allFramesNum[0]), 0)
-    tempImg1 = cv2.imread(rhtFrameDir_pathObj / nameTemplate.format(allFramesNum[0]), 0)
+    tempImg1 = cv2.imread(str(lftFrameDir_pathObj/nameTemplate.format(allFramesNum[0])), 0)
+    tempImg2 = cv2.imread(str(rhtFrameDir_pathObj/nameTemplate.format(allFramesNum[0])), 0)
     
     height1, width1 = tempImg1.shape
     height2, width2 = tempImg2.shape
@@ -84,11 +84,11 @@ def makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, nameTemplate, vid
     
     # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
     vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')  # codec for .mp4 file
-    video       = cv2.VideoWriter(videoDir_pathObj / 'videoIsolated.mp4',vidCodec, fps, (videoWidth, videoHeight))
+    videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'videoCombined.mp4'),vidCodec, fps, (videoWidth, videoHeight))
     
     for frameNum in tqdm(allFramesNum, desc="Making video"):
-        lft_img = cv2.imread(lftFrameDir_pathObj / nameTemplate.format(frameNum))
-        bin_img = cv2.imread(rhtFrameDir_pathObj / nameTemplate.format(frameNum))
+        lft_img = cv2.imread(str(lftFrameDir_pathObj/nameTemplate.format(frameNum)))
+        bin_img = cv2.imread(str(rhtFrameDir_pathObj/nameTemplate.format(frameNum)))
         if lft_img is None or bin_img is None:
             print("Can't receive frame (stream end?). Exiting ...")
             exit()
@@ -96,27 +96,28 @@ def makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, nameTemplate, vid
         bin_img     = cv2.copyMakeBorder(bin_img, 0, videoHeight - height1, 0, 0, cv2.BORDER_CONSTANT, value=[0,0,0])
         lft_img     = cv2.copyMakeBorder(lft_img, 0, videoHeight - height2, 0, 0, cv2.BORDER_CONSTANT, value=[0,0,0])
         concat_img  = np.concatenate((lft_img, bin_img), axis=1)     # Concatenate the two images horizontally (i.e. side-by-side)
-        video.write(concat_img) # Write the frame to video file
+        videoWriter.write(concat_img) # Write the frame to video file
     cv2.destroyAllWindows()
-    video.release() # Now the video is saved in the current directory
+    videoWriter.release() # Now the video is saved in the current directory
 
 def makeSingleVideo(framePathObj, nameTemplate, fps):
     allFramesNum    = getFrameNumbers_ordered(framePathObj, nameTemplate)
-    tempImg         = cv2.imread(join(framePathObj, nameTemplate % allFramesNum[0]), 0)
+    tempImg         = cv2.imread(str(framePathObj/nameTemplate.format(allFramesNum[0])), 0)
     height, width   = tempImg.shape
     
     # Define the codec and create VideoWriter object
     # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
     vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')
-    video  = cv2.VideoWriter(framePathObj.parent / 'videoIsolated.mp4', vidCodec, fps, (width, height))
+    videoWriter = cv2.VideoWriter(str(framePathObj.parent / 'videoIsolated.mp4'),vidCodec, fps, (width, height))
+    
     for frameNum in tqdm(allFramesNum, desc="Making video"):
-        frm_img = cv2.imread(framePathObj / nameTemplate.format(frameNum))
+        frm_img = cv2.imread(str(framePathObj/nameTemplate.format(frameNum)))
         if frm_img is None:     # Check if frame is read correctly
             print("Can't receive frame (stream end?). Exiting ...")
             exit()
-        video.write(frm_img)    # feed the concatenated image to the video writer
+        videoWriter.write(frm_img)    # feed the concatenated image to the video writer
     cv2.destroyAllWindows()
-    video.release()            # Now the video is saved in the current directory
+    videoWriter.release()            # Now the video is saved in the current directory
 
 def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTemplate, params):
     allFramesNum            = getFrameNumbers_ordered(binaryFrameDir_pathObj, frameNameTemplate)
@@ -148,7 +149,7 @@ def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTempl
     plt.close('all')
     
 def imgSegmentation(binaryFrameDir_pathObj, nameTemplate, frameNum, connectivity):
-    img = cv2.imread(binaryFrameDir_pathObj / nameTemplate.format(frameNum), 0 )
+    img = cv2.imread(str(binaryFrameDir_pathObj/nameTemplate.format(frameNum)), 0)
     img = cv2.bitwise_not(img)                                      # invert the binary image
     imgShape = img.shape
     labelImg, count = skm.label(img, connectivity=connectivity, return_num=True)
