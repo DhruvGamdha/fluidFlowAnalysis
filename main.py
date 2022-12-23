@@ -29,34 +29,28 @@ def run():
     baseInpPth    = 'data/fluidFlow2/'
     inpTemplate   = 'version_{:02d}'
     inpTempIndex  = 1
-    inpDirsToCreate_wrtTemplate = [ 'all',
-                                    'all/frames',
-                                    'set1',
+    inpDirsToCreate_wrtTemplate = [ 'all/frames',
                                     'set1/frames']
+    inpDirObj = directories(baseInpPth, inpTemplate, inpTempIndex, inpDirsToCreate_wrtTemplate) # Create input directories
+    inpDirObj.addDir_usingKey('__base__', 'original/frames')                                    # create original/frames directory wrt base directory
     
     baseOutpPth   = 'results/fluidFlow2/'
     outpTemplate  = 'version_{:02d}'
     outpTempIndex = 1
-    outpDirsToCreate_wrtTemplate= [ 'binary', 
-                                    'binary/all', 
-                                    'binary/all/frames', 
-                                    'analysis', 
-                                    'analysis/pixSize', 
+    outpDirsToCreate_wrtTemplate= [ 'binary/all/frames', 
                                     'analysis/pixSize/frames', 
-                                    'analysis/vertPos', 
                                     'analysis/vertPos/frames', 
-                                    'analysis/dynamicMarker', 
                                     'analysis/dynamicMarker/frames']  
-    
-    inpDirObj = directories(baseInpPth, inpTemplate, inpTempIndex, inpDirsToCreate_wrtTemplate)  # Create input directories
-    # create original/frames directory wrt base directory
-    inpDirObj.addDir_usingKey('__base__', 'original/frames')
     
     outpDirObj = directories(baseOutpPth, outpTemplate, outpTempIndex, outpDirsToCreate_wrtTemplate)  # Create output directories
     
-    videoFPS = 30
-    frameNameTemplate = 'frame_{:04d}.png'
-    flowType = 2
-    inpVideoFormat = '.avi'
-    analysis    = bubbleAnalysis(videoFPS, frameNameTemplate, flowType, inpVideoFormat)
+    videoFPS            = 30
+    frameNameTemplate   = 'frame_{:04d}.png'
+    flowType            = 2
+    inpVideoFormat      = '.avi'
+    analysis            = bubbleAnalysis(videoFPS, frameNameTemplate, flowType, inpVideoFormat)
     
+    analysis.getFramesFromVideo(inpDirObj.getDir_usingKey('original/frames'))
+    analysis.getCroppedFrames(inpDirObj.getDir_usingKey('original/frames'), inpDirObj.getDir_usingKey('all/frames'))
+    analysis.getBinaryImages(inpDirObj.getDir_usingKey('all/frames'), outpDirObj.getDir_usingKey('binary/all/frames'))
+    analysis.createVideoFromFrames(outpDirObj.getDir_usingKey('binary/all/frames'))    

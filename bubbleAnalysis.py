@@ -12,6 +12,11 @@ class bubbleAnalysis:
         from utils import readAndSaveVid
         readAndSaveVid(videoFramesDir_pathObj, self.videoFormat, self.frameNameTemplate)
     
+    def getCroppedFrames(self, origFrameDir_pathObj, croppedFrameDir_pathObj):
+        from utils import cropFrames
+        params = self.flowTypeParams(self.flowType)
+        cropFrames(origFrameDir_pathObj, croppedFrameDir_pathObj, self.frameNameTemplate, params)
+    
     def getBinaryImages(self, origFrameDir_pathObj, binaryFrameDir_pathObj):
         from utils import processImages
         params = self.flowTypeParams(self.flowType)
@@ -19,7 +24,6 @@ class bubbleAnalysis:
         
     def createVideoFromFrames(self, frameDir_pathObj):
         from utils import makeSingleVideo
-        from os.path import join
         makeSingleVideo(frameDir_pathObj, self.frameNameTemplate, self.videoFPS)
           
     def createConcatVideo(self, lftFrameDir_pathObj, rhtFrameDir_pathObj, videoDir_pathObj):

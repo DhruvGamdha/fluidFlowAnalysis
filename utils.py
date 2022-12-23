@@ -41,35 +41,25 @@ def readAndSaveVid(videoFramesPathObj, videoFormat, frameNameTemplate):
         print("frame number:", count)
         cv2.imwrite(videoFramesPathObj/frameNameTemplate.format(count), frame)
         count += 1
+        
+def cropFrames(origFrameDir_pathObj, croppedFrameDir_pathObj, frameNameTemplate, params):
+    allFramesNum    = getFrameNumbers_ordered(origFrameDir_pathObj, frameNameTemplate)
+    numExistingFile = len([f for f in croppedFrameDir_pathObj.iterdir() if (f.is_file() and f.suffix == ".png")])    # Get number of frames already saved
+    if numExistingFile == len(allFramesNum):
+        print("Number of frames in the video is same as the number of frames already saved in {}.".format(croppedFrameDir_pathObj))
+        print("Skipping frame extraction.")
+        return
+     
+    print("If frames already exist inside {}, they will be overwritten.".format(str(croppedFrameDir_pathObj)))
+    for frameNum in allFramesNum:
+        frame = cv2.imread(str(origFrameDir_pathObj/frameNameTemplate.format(frameNum)), 0)
+        frame = frame[  params["top"]   :   params["bottom"]    ,   params["left"]  :   params["right"] ]
+        cv2.imwrite(croppedFrameDir_pathObj/frameNameTemplate.format(frameNum), frame)
 
-''' def processImages(framePath, binaryPath, top, bottom, left, right, i, j, min_size, connectivity):
-    import cv2
-    import os
-    from os.path import join
-    import numpy as np
-    import matplotlib.pyplot as plt
-    
-    allFramesName = [f for f in os.listdir(framePath) if (os.path.isfile(join(framePath, f)) and f.endswith(".png"))]
-    
-    # NOTE: The best parameters are i=9 and j=5, gaussian adaptive thresholding
-    i = 9
-    j = 5
-    
-    for frameName in allFramesName:
-        print(frameName)
-        
-        frame = cv2.imread(join(framePath, frameName), 0)   # Read the frame as grayscale
-        
-        frame = frame[top:bottom,left:right]    # Crop the frame from certre, original size is 400x800
-        
-        th2 = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,i,j)
-        cv2.imwrite(join(binaryPath, "frames", frameName), th2)
- '''
 def processImages(originalFrameDir_pathObj, binaryFrameDir_pathObj, nameTemplate, params):
     allFramesNum    = getFrameNumbers_ordered(originalFrameDir_pathObj, nameTemplate)
     for frameNum in tqdm(allFramesNum, desc="Processing frames"):
         frame           = cv2.imread(originalFrameDir_pathObj / nameTemplate.format(frameNum), 0)
-        frame           = frame[    params["top"]:params["bottom"]  ,   params["left"]:params["right"]  ]        
         th2             = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,    params["blockSize"],    params["constSub"])
         invth2          = 255 - th2    
         labelImg, count = skm.label(invth2, connectivity=params["connectivity"], return_num=True)
