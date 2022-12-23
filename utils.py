@@ -159,8 +159,8 @@ def checkWriteAndRead(videoOrig, txtFile_pathObj):
     
     # Check if the data loaded from the text file is the same as the original data
     for i in range(videoOrig.getNumFrames()):
-        frameOrig = videoOrig.getFrames(i)
-        frameRead = videoTemp.getFrames(i)
+        frameOrig = videoOrig.getFrame(i)
+        frameRead = videoTemp.getFrame(i)
         for j in range(frameOrig.getNumObjects()):
             obj1 = frameOrig.getObject(j)
             obj2 = frameRead.getObject(j)
