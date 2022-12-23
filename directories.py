@@ -59,7 +59,7 @@ class directories:
             return
     
     def addDir_usingKey(self, wrtKey, key):
-        if wrtKey != '__base__' or wrtKey != '__template__':
+        if wrtKey != '__base__' and wrtKey != '__template__':
             print('Invalid wrtKey')
             return
         
