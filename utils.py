@@ -164,7 +164,8 @@ def checkWriteAndRead(videoOrig, txtFile_pathObj):
         for j in range(frameOrig.getNumObjects()):
             obj1 = frameOrig.getObject(j)
             obj2 = frameRead.getObject(j)
-            assert obj1.getPosition() == obj2.getPosition()
+            assert obj1.getX() == obj2.getX()
+            assert obj1.getY() == obj2.getY()
             assert obj1.getSize() == obj2.getSize()
     
 def imgSegmentation(binaryFrameDir_pathObj, nameTemplate, frameNum, connectivity):
