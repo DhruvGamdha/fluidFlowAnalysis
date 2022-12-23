@@ -30,8 +30,8 @@ if __name__ == "__main__":
     outpPth_base  = 'results/fluidFlow2/'
     inpTemplate   = 'version_{:02d}'
     outpTemplate  = 'version_{:02d}'
-    inpTempIndex  = -1
-    outpTempIndex = -1
+    inpTempIndex  = 1
+    outpTempIndex = 1
     inpDirsToCreate_wrtTemplate = [ 'all/frames',
                                     'set1/frames']
     outpDirsToCreate_wrtTemplate= [ 'binary/all/frames', 
