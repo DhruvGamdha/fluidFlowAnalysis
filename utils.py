@@ -25,10 +25,7 @@ def readAndSaveVid(videoFramesPathObj, videoFormat, frameNameTemplate):
         return
     
     numFrames       = int(video.get(cv2.CAP_PROP_FRAME_COUNT))          # Get number of frames in the video
-    numExistingFile = len([f for f in videoFramesPathObj.iterdir() if (f.is_file() and f.suffix == ".png")])    # Get number of frames already saved
-    if numExistingFile == numFrames:
-        print("Number of frames in the video is same as the number of frames already saved in {}.".format(videoFramesPathObj))
-        print("Skipping frame extraction.")
+    if checkNumFramesInDir(videoFramesPathObj, numFrames):
         return
     
     print("If frames already exist inside {}, they will be overwritten.".format(str(videoFramesPathObj)))
@@ -43,10 +40,7 @@ def readAndSaveVid(videoFramesPathObj, videoFormat, frameNameTemplate):
         
 def cropFrames(origFrameDir_pathObj, croppedFrameDir_pathObj, frameNameTemplate, params):
     allFramesNum    = getFrameNumbers_ordered(origFrameDir_pathObj, frameNameTemplate)
-    numExistingFile = len([f for f in croppedFrameDir_pathObj.iterdir() if (f.is_file() and f.suffix == ".png")])    # Get number of frames already saved
-    if numExistingFile == len(allFramesNum):
-        print("Number of frames in the video is same as the number of frames already saved in {}.".format(croppedFrameDir_pathObj))
-        print("Skipping frame extraction.")
+    if checkNumFramesInDir(croppedFrameDir_pathObj, len(allFramesNum)):
         return
      
     print("If frames already exist inside {}, they will be overwritten.".format(str(croppedFrameDir_pathObj)))
@@ -57,6 +51,9 @@ def cropFrames(origFrameDir_pathObj, croppedFrameDir_pathObj, frameNameTemplate,
 
 def processImages(originalFrameDir_pathObj, binaryFrameDir_pathObj, nameTemplate, params):
     allFramesNum    = getFrameNumbers_ordered(originalFrameDir_pathObj, nameTemplate)
+    if checkNumFramesInDir(binaryFrameDir_pathObj, len(allFramesNum)):
+        return
+    
     for frameNum in tqdm(allFramesNum, desc="Processing frames"):
         frame           = cv2.imread(str(originalFrameDir_pathObj/nameTemplate.format(frameNum)), 0)
         th2             = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,    params["blockSize"],    params["constantSub"])
@@ -119,17 +116,22 @@ def makeSingleVideo(framePathObj, nameTemplate, fps):
     videoWriter.release()            # Now the video is saved in the current directory
 
 def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTemplate, params):
-    allFramesNum            = getFrameNumbers_ordered(binaryFrameDir_pathObj, frameNameTemplate)
-    connectivity            = params["connectivity"]
-    video = Video()
+    allFramesNum= getFrameNumbers_ordered(binaryFrameDir_pathObj, frameNameTemplate)
+    condn1      = checkNumFramesInDir(analysisBaseDir_pathObj/ "pixSize" / "frames" , len(allFramesNum))
+    condn2      = checkNumFramesInDir(analysisBaseDir_pathObj/ "vertPos" / "frames" , len(allFramesNum))
+    condn3      = checkNumFramesInDir(analysisBaseDir_pathObj/ "dynamicMarker" / "frames" , len(allFramesNum))
+    if condn1 and condn2 and condn3:
+        return
+    connectivity= params["connectivity"]
+    video       = Video()
     for frameNum in tqdm(allFramesNum, desc="Analyzing drops"):
         labelImg, count, imgShape = imgSegmentation(binaryFrameDir_pathObj, frameNameTemplate, frameNum, connectivity)
         frame = Frame()
         for i in range(1,count+1):
             rows, cols = np.where(labelImg == i)
             # Get the position (x, y) of the top left bounding box around the bubble, origin at the bottom left corner
-            y = imgShape[0] - np.min(rows)
-            x = np.min(cols)
+            y   = imgShape[0] - np.min(rows)
+            x   = np.min(cols)
             obj = Object(x, y, len(rows))
             frame.addObject(obj)
         
@@ -164,6 +166,14 @@ def getFrameNumbers_ordered(framePathObj, nameTemplate):
         allFramesNum[i] = frameNum
     allFramesNum = np.sort(allFramesNum).astype(int)                # sort the frame numbers
     return allFramesNum
+
+def checkNumFramesInDir(frameDir_pathObj, numFramesToCreate):
+    numExistingFile = len([f for f in frameDir_pathObj.iterdir() if (f.is_file() and f.suffix == ".png")])    # Get number of frames already saved
+    if numExistingFile == numFramesToCreate:
+        print("Already all the frames exist in {}.".format(frameDir_pathObj))
+        print("Skipping frame creation.")
+        return True
+    return False
 
 def plotFrameObjectAnalysis(frameObj, frameNum, numBubbles, imgShape, analysisBaseDir_pathObj, frameNameTemplate):
     _, bubble_vertPos   = frameObj.getObjectPositionList()
