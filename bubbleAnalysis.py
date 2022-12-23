@@ -3,10 +3,11 @@ import os
 class bubbleAnalysis:
     def __init__(self, fps, frameNameTemplate, flowType, videoFormat):
         # Create a dictionary to store all the path names
-        self.videoFPS                   = fps          # FPS of the video
-        self.frameNameTemplate          = frameNameTemplate # Name template of the frames
-        self.flowType                   = flowType             # 1: fluidFlow1, 2: fluidFlow2
-        self.videoFormat                = videoFormat
+        self.videoFPS           = fps          # FPS of the video
+        self.frameNameTemplate  = frameNameTemplate # Name template of the frames
+        self.flowType           = flowType             # 1: fluidFlow1, 2: fluidFlow2
+        self.videoFormat        = videoFormat
+        self.AnalysedVideo      = None
         
     def getFramesFromVideo(self, videoFramesDir_pathObj):
         from utils import readAndSaveVid
@@ -34,7 +35,7 @@ class bubbleAnalysis:
     def binaryAnalysis(self, binaryFrameDir_pathObj, analysisBaseDir_pathObj):
         from utils import dropAnalysis
         params = self.flowTypeParams(self.flowType)
-        dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, self.frameNameTemplate, params)
+        self.AnalysedVideo = dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, self.frameNameTemplate, params)
     
     def flowTypeParams(self, flowType):
         para = {}

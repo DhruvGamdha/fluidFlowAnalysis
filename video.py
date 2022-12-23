@@ -7,7 +7,6 @@ class Video:
         self.frames = []                # All Frames object orderly placed in a list 
         self.objCount_eachFrame = []    # Number of objects in each frame, ordered by frame index
         
-        
     def addFrame(self, frame):
         self.frames.append(frame)
         
@@ -52,6 +51,7 @@ class Video:
                 # saveFile.write('\t' + 'Object: ' + str(j) + '\t' + 'Position: ' + str(self.getFrame(i).getObject(j).getPosition()) + '\t' + 'Size: ' + str(self.getFrame(i).getObject(j).getSize()) + '\n')
                 
         saveFile.close()
+        assert savePath.exists()
          
     def loadFromTextFile(self, loadDir_pathObj):
          # Load the video analysis data from the text file
@@ -86,3 +86,10 @@ class Video:
             # Add the frame to the video
             self.frames.append(frame)            
         loadFile.close()
+        assert self.checkAnalysisFileExists(loadDir_pathObj)
+    
+    def checkAnalysisFileExists(self, loadDir_pathObj):
+        loadPath = loadDir_pathObj / 'videoAnalysis.txt'
+        if loadPath.exists():
+            return True
+        return False

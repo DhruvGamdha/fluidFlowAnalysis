@@ -68,7 +68,10 @@ def processImages(originalFrameDir_pathObj, binaryFrameDir_pathObj, nameTemplate
         th2 = 255 - invth2
         cv2.imwrite(str(binaryFrameDir_pathObj/nameTemplate.format(frameNum)), th2)
 
-def makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, nameTemplate, videoDir_pathObj, fps, params):    
+def makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, nameTemplate, videoDir_pathObj, fps, params):
+    if checkVideoFileExists(videoDir_pathObj):
+        print("Combined video already exists in {}. Skipping.".format(str(videoDir_pathObj)))
+        return    
     allFramesNum    = getFrameNumbers_ordered(rhtFrameDir_pathObj, nameTemplate)
     tempImg1 = cv2.imread(str(lftFrameDir_pathObj/nameTemplate.format(allFramesNum[0])), 0)
     tempImg2 = cv2.imread(str(rhtFrameDir_pathObj/nameTemplate.format(allFramesNum[0])), 0)
@@ -97,6 +100,10 @@ def makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, nameTemplate, vid
     videoWriter.release() # Now the video is saved in the current directory
 
 def makeSingleVideo(framePathObj, nameTemplate, fps):
+    if checkVideoFileExists(framePathObj.parent, 'isolated'):
+        print("Isolated video already exists in {}. Skipping.".format(str(framePathObj.parent)))
+        return
+    
     allFramesNum    = getFrameNumbers_ordered(framePathObj, nameTemplate)
     tempImg         = cv2.imread(str(framePathObj/nameTemplate.format(allFramesNum[0])), 0)
     height, width   = tempImg.shape
@@ -115,15 +122,27 @@ def makeSingleVideo(framePathObj, nameTemplate, fps):
     cv2.destroyAllWindows()
     videoWriter.release()            # Now the video is saved in the current directory
 
+def checkVideoFileExists(videoDir_pathObj, videType):
+    if videType == "combined":
+        videoPath = videoDir_pathObj / "videoCombined.mp4"
+    elif videType == "isolated":
+        videoPath = videoDir_pathObj / "videoIsolated.mp4"
+    else:
+        print("Invalid video type")
+        return False
+    return videoPath.exists()
+
 def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTemplate, params):
+    video       = Video()
     allFramesNum= getFrameNumbers_ordered(binaryFrameDir_pathObj, frameNameTemplate)
     condn1      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "pixSize" / "frames" , len(allFramesNum))
     condn2      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "vertPos" / "frames" , len(allFramesNum))
     condn3      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "dynamicMarker" / "frames" , len(allFramesNum))
-    # if condn1 and condn2 and condn3:
-    #     return
+    condn4      = video.checkAnalysisFileExists(analysisBaseDir_pathObj)
+    if condn1 and condn2 and condn3 and condn4:
+        video.loadFromTextFile(analysisBaseDir_pathObj)
+        return video
     connectivity= params["connectivity"]
-    video       = Video()
     for frameNum in tqdm(allFramesNum, desc="Analyzing drops"):
         labelImg, count, imgShape = imgSegmentation(binaryFrameDir_pathObj, frameNameTemplate, frameNum, connectivity)
         frame = Frame()
@@ -137,10 +156,8 @@ def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTempl
         
         video.addFrame(frame)
         video.addFrameObjCount(count)
-        # plotFrameObjectAnalysis(frame, frameNum, count, imgShape, analysisBaseDir_pathObj, frameNameTemplate)
-    
-    video.saveToTextFile(analysisBaseDir_pathObj)
-    checkWriteAndRead(video, analysisBaseDir_pathObj)        
+        plotFrameObjectAnalysis(frame, frameNum, count, imgShape, analysisBaseDir_pathObj, frameNameTemplate)
+    video.saveToTextFile(analysisBaseDir_pathObj)        
     
     # Plot the bubble count, frame wise
     plt.plot(video.getObjCountList())
@@ -149,24 +166,9 @@ def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTempl
     plt.title("bubble count in the video")
     plt.savefig(analysisBaseDir_pathObj / "frame_bubbleCount.png", dpi=200)
     plt.close()
-    
     plt.close('all')
     
-def checkWriteAndRead(videoOrig, txtFile_pathObj):
-    # Create another Video object and load the data from the text file
-    videoTemp = Video()
-    videoTemp.loadFromTextFile(txtFile_pathObj)
-    
-    # Check if the data loaded from the text file is the same as the original data
-    for i in range(videoOrig.getNumFrames()):
-        frameOrig = videoOrig.getFrame(i)
-        frameRead = videoTemp.getFrame(i)
-        for j in range(frameOrig.getNumObjects()):
-            obj1 = frameOrig.getObject(j)
-            obj2 = frameRead.getObject(j)
-            assert obj1.getX() == obj2.getX()
-            assert obj1.getY() == obj2.getY()
-            assert obj1.getSize() == obj2.getSize()
+    return video
     
 def imgSegmentation(binaryFrameDir_pathObj, nameTemplate, frameNum, connectivity):
     img = cv2.imread(str(binaryFrameDir_pathObj/nameTemplate.format(frameNum)), 0)
