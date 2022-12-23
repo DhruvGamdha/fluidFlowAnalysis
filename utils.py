@@ -59,7 +59,7 @@ def processImages(originalFrameDir_pathObj, binaryFrameDir_pathObj, nameTemplate
     allFramesNum    = getFrameNumbers_ordered(originalFrameDir_pathObj, nameTemplate)
     for frameNum in tqdm(allFramesNum, desc="Processing frames"):
         frame           = cv2.imread(str(originalFrameDir_pathObj/nameTemplate.format(frameNum)), 0)
-        th2             = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,    params["blockSize"],    params["constSub"])
+        th2             = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,    params["blockSize"],    params["constantSub"])
         invth2          = 255 - th2    
         labelImg, count = skm.label(invth2, connectivity=params["connectivity"], return_num=True)
         
