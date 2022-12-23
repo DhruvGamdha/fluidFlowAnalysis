@@ -15,5 +15,11 @@ class Object:
     def getPosition(self):
         return self.position
     
+    def getX(self):
+        return self.position[0]
+    
+    def getY(self):
+        return self.position[1]
+    
     def getSize(self):
         return self.size

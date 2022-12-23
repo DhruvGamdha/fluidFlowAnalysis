@@ -47,7 +47,9 @@ class Video:
         for i in range(self.getNumFrames()):
             saveFile.write('Frame: ' + str(i) + '\t' + 'Total objects: ' + str(self.getFrameObjCount(i)) + '\n')
             for j in range(self.getFrameObjCount(i)):
-                saveFile.write('\t' + 'Object: ' + str(j) + '\t' + 'Position: ' + str(self.getFrame(i).getObject(j).getPosition()) + '\t' + 'Size: ' + str(self.getFrame(i).getObject(j).getSize()) + '\n')
+                # Write position using obj.getX() and obj.getY()
+                saveFile.write('\t' + 'Object: ' + str(j) + '\t' + 'Position: [' + str(self.getFrame(i).getObject(j).getX()) + ' ' + str(self.getFrame(i).getObject(j).getY()) + ']' + '\t' + 'Size: ' + str(self.getFrame(i).getObject(j).getSize()) + '\n') 
+                # saveFile.write('\t' + 'Object: ' + str(j) + '\t' + 'Position: ' + str(self.getFrame(i).getObject(j).getPosition()) + '\t' + 'Size: ' + str(self.getFrame(i).getObject(j).getSize()) + '\n')
                 
         saveFile.close()
          
