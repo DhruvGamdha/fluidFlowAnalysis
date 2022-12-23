@@ -38,7 +38,6 @@ def readAndSaveVid(videoFramesPathObj, videoFormat, frameNameTemplate):
         if not ret:         # Check if frame is read correctly
             print("Can't receive frame (stream end?). Exiting ...")
             break
-        print("frame number:", count)
         cv2.imwrite(str(videoFramesPathObj/frameNameTemplate.format(count)) , frame )
         count += 1
         
