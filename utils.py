@@ -69,7 +69,7 @@ def processImages(originalFrameDir_pathObj, binaryFrameDir_pathObj, nameTemplate
         cv2.imwrite(str(binaryFrameDir_pathObj/nameTemplate.format(frameNum)), th2)
 
 def makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, nameTemplate, videoDir_pathObj, fps, params):
-    if checkVideoFileExists(videoDir_pathObj):
+    if checkVideoFileExists(videoDir_pathObj, 'combined'):
         print("Combined video already exists in {}. Skipping.".format(str(videoDir_pathObj)))
         return    
     allFramesNum    = getFrameNumbers_ordered(rhtFrameDir_pathObj, nameTemplate)
@@ -123,12 +123,12 @@ def makeSingleVideo(framePathObj, nameTemplate, fps):
     videoWriter.release()            # Now the video is saved in the current directory
 
 def checkVideoFileExists(videoDir_pathObj, videType):
-    if videType == "combined":
-        videoPath = videoDir_pathObj / "videoCombined.mp4"
-    elif videType == "isolated":
-        videoPath = videoDir_pathObj / "videoIsolated.mp4"
+    if videType == 'combined':
+        videoPath = videoDir_pathObj / 'videoCombined.mp4'
+    elif videType == 'isolated':
+        videoPath = videoDir_pathObj / 'videoIsolated.mp4'
     else:
-        print("Invalid video type")
+        print('Invalid video type')
         return False
     return videoPath.exists()
 
