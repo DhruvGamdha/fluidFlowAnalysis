@@ -65,7 +65,7 @@ def processImages(originalFrameDir_pathObj, binaryFrameDir_pathObj, nameTemplate
         
         for i in range(1, count+1):
             numPixels = np.sum(labelImg == i)
-            if numPixels <= params["min_size"]:
+            if numPixels <= params["minSize"]:
                 invth2[labelImg == i] = 0
                 
         th2 = 255 - invth2
