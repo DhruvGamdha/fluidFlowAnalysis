@@ -49,7 +49,7 @@ if __name__ == "__main__":
     inpVideoFormat      = '.avi'
     analysis            = bubbleAnalysis(videoFPS, frameNameTemplate, flowType, inpVideoFormat)
     
-    analysis.getFramesFromVideo(inpDirObj.getDir_usingKey('original/frames'))
-    analysis.getCroppedFrames(inpDirObj.getDir_usingKey('original/frames'), inpDirObj.getDir_usingKey('all/frames'))
-    analysis.getBinaryImages(inpDirObj.getDir_usingKey('all/frames'), outpDirObj.getDir_usingKey('binary/all/frames'))
-    analysis.createVideoFromFrames(outpDirObj.getDir_usingKey('binary/all/frames'))    
+    analysis.getFramesFromVideo(inpDirObj.getDirPathObj('original/frames'))
+    analysis.getCroppedFrames(inpDirObj.getDirPathObj('original/frames'), inpDirObj.getDirPathObj('all/frames'))
+    analysis.getBinaryImages(inpDirObj.getDirPathObj('all/frames'), outpDirObj.getDirPathObj('binary/all/frames'))
+    analysis.createVideoFromFrames(outpDirObj.getDirPathObj('binary/all/frames'))    
