@@ -1,7 +1,7 @@
 from bubbleAnalysis import bubbleAnalysis
 # import pathlib as pl
 # main function
-if __name__ == "__main__":
+def oldMain():
     baseVideoPath= 'data/fluidFlow2/'
     baseResPath  = 'results/fluidFlow2/'
     # newResultsDir = False
@@ -23,26 +23,25 @@ if __name__ == "__main__":
     print("Done")
     
 
-def run():
+if __name__ == "__main__":
     # temp main function
     from directories import directories
-    baseInpPth    = 'data/fluidFlow2/'
+    inpPth_base   = 'data/fluidFlow2/'
+    outpPth_base  = 'results/fluidFlow2/'
     inpTemplate   = 'version_{:02d}'
-    inpTempIndex  = 1
+    outpTemplate  = 'version_{:02d}'
+    inpTempIndex  = -1
+    outpTempIndex = -1
     inpDirsToCreate_wrtTemplate = [ 'all/frames',
                                     'set1/frames']
-    inpDirObj = directories(baseInpPth, inpTemplate, inpTempIndex, inpDirsToCreate_wrtTemplate) # Create input directories
-    inpDirObj.addDir_usingKey('__base__', 'original/frames')                                    # create original/frames directory wrt base directory
-    
-    baseOutpPth   = 'results/fluidFlow2/'
-    outpTemplate  = 'version_{:02d}'
-    outpTempIndex = 1
     outpDirsToCreate_wrtTemplate= [ 'binary/all/frames', 
                                     'analysis/pixSize/frames', 
                                     'analysis/vertPos/frames', 
                                     'analysis/dynamicMarker/frames']  
     
-    outpDirObj = directories(baseOutpPth, outpTemplate, outpTempIndex, outpDirsToCreate_wrtTemplate)  # Create output directories
+    inpDirObj = directories(inpPth_base, inpTemplate, inpTempIndex, inpDirsToCreate_wrtTemplate) # Create input directories
+    inpDirObj.addDir_usingKey('__base__', 'original/frames')                                    # create original/frames directory wrt base directory
+    outpDirObj = directories(outpPth_base, outpTemplate, outpTempIndex, outpDirsToCreate_wrtTemplate)  # Create output directories
     
     videoFPS            = 30
     frameNameTemplate   = 'frame_{:04d}.png'

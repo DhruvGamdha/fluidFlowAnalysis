@@ -14,7 +14,7 @@ class directories:
         self.generateDirectories()
     
     def updateTemplateIndex(self, versionIndex):
-        if versionIndex == -1:
+        if versionIndex <= 0:
             versionIndex = 0
             while True:
                 versionIndex += 1
