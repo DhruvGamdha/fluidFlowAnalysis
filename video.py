@@ -73,9 +73,9 @@ class Video:
             frame = Frame()
             for j in range(totalObjects):
                 lineIndex += 1
-                # Read the object data written as: saveFile.write('\t' + 'Object: ' + str(j) + '\t' + 'Position: ' + str(self.getFrame(i).getObject(j).getPosition()) + '\t' + 'Size: ' + str(self.getFrame(i).getObject(j).getSize()) + '\n')
-                position = np.array([float(lines[lineIndex].split()[3][1:-1].split(',')[0]), float(lines[lineIndex].split()[3][1:-1].split(',')[1])])
-                size = float(lines[lineIndex].split()[5])
+                # Read Position and Size value from the line example; Object: 0	Position: [45 28]	Size: 333
+                position = np.array([int(lines[lineIndex].split()[3][1:]), int(lines[lineIndex].split()[4][:-1])])
+                size = int(lines[lineIndex].split()[6])
                  
                 # Create a new object and add it to the frame
                 newObject = Object(position[0], position[1], size)
