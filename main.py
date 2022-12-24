@@ -53,7 +53,7 @@ if __name__ == "__main__":
     analysis.getCroppedFrames(inpDirObj.getDirPathObj('original/frames'), inpDirObj.getDirPathObj('all/frames'))
     analysis.getBinaryImages(inpDirObj.getDirPathObj('all/frames'), outpDirObj.getDirPathObj('binary/all/frames'))
     analysis.createVideoFromFrames(outpDirObj.getDirPathObj('binary/all/frames'))
-    analysis.binaryAnalysis(outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/pixSize/frames').parents[1])
+    analysis.extractFrameObjects(outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/pixSize/frames').parents[1])
     analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/pixSize/frames'))
     analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/vertPos/frames'))
     analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/dynamicMarker/frames'))    

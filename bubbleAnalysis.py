@@ -31,7 +31,7 @@ class bubbleAnalysis:
         params = self.flowTypeParams(self.flowType)
         makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, self.frameNameTemplate, videoDir_pathObj, self.videoFPS, params)    
     
-    def binaryAnalysis(self, binaryFrameDir_pathObj, analysisBaseDir_pathObj):
+    def extractFrameObjects(self, binaryFrameDir_pathObj, analysisBaseDir_pathObj):
         from utils import dropAnalysis
         params = self.flowTypeParams(self.flowType)
         self.AnalysedVideo = dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, self.frameNameTemplate, params)
