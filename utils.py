@@ -158,8 +158,13 @@ def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTempl
             frame.addObject(obj)
         
         video.addFrame(frame)
-        plotFrameObjectAnalysis(frame, frameNum, count, imgShape, analysisBaseDir_pathObj, frameNameTemplate)
-    video.saveToTextFile(analysisBaseDir_pathObj)        
+        # plotFrameObjectAnalysis(frame, frameNum, count, imgShape, analysisBaseDir_pathObj, frameNameTemplate)
+    video.saveToTextFile(analysisBaseDir_pathObj)
+    
+    newVideo = Video()
+    newVideo.loadFromTextFile(analysisBaseDir_pathObj)
+    if video == newVideo:
+        print("Video analysis saved successfully")      
     
     return video
     

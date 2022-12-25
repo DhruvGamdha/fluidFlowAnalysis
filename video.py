@@ -33,11 +33,17 @@ class Video:
         
         for frameInd in range(self.getNumFrames()):
             frame = self.getFrame(frameInd)
-            saveFile.write('FrameNumber: ' + str(frame.getFrameNumber()) + '\t' + 'TotalObjects: ' + str(frame.getObjectCount()) + '\n')
+            saveFile.write('FrameNumber: ' + str(frame.getFrameNumber())) 
+            saveFile.write('\t' + 'TotalObjects: ' + str(frame.getObjectCount()))
+            saveFile.write('\n')
             for j in range(frame.getObjectCount()):
                 obj = frame.getObject(j)
                 
-                saveFile.write('\t' + 'FrameNumber: ' + str(obj.getFrameNumber()) + '\t' + 'ObjectIndex: ' + str(obj.getObjectIndex()) + '\t' + 'Position: [' + str(obj.getX()) + ' ' + str(obj.getY()) + ']' + '\t' + 'Size: ' + str(obj.getSize()) + '\n')
+                saveFile.write('\t' + 'FrameNumber: ' + str(obj.getFrameNumber()))
+                saveFile.write('\t' + 'ObjectIndex: ' + str(obj.getObjectIndex()))
+                saveFile.write('\t' + 'Position: [' + str(obj.getX()) + ' ' + str(obj.getY()) + ']')
+                saveFile.write('\t' + 'Size: ' + str(obj.getSize()))
+                saveFile.write('\n')
                 
         saveFile.close()
         assert savePath.exists()
