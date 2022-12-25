@@ -161,15 +161,6 @@ def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTempl
         plotFrameObjectAnalysis(frame, frameNum, count, imgShape, analysisBaseDir_pathObj, frameNameTemplate)
     video.saveToTextFile(analysisBaseDir_pathObj)        
     
-    # Plot the bubble count, frame wise
-    plt.plot(video.getObjCountList())
-    plt.xlabel("Frame Number")
-    plt.ylabel("Bubble Count")
-    plt.title("bubble count in the video")
-    plt.savefig(analysisBaseDir_pathObj / "frame_bubbleCount.png", dpi=200)
-    plt.close()
-    plt.close('all')
-    
     return video
     
 def imgSegmentation(binaryFrameDir_pathObj, nameTemplate, frameNum, connectivity):
