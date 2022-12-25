@@ -5,7 +5,7 @@ from frame import Frame
 class Video:
     def __init__(self):
         self.frames = []                # All Frames object orderly placed in a list 
-        self.objCount_eachFrame = []    # Number of objects in each frame, ordered by frame index
+        self.bubbles = []               # All Bubble object orderly placed in a list
         
     def addFrame(self, frame):
         self.frames.append(frame)
@@ -22,18 +22,6 @@ class Video:
     def getNumFrames(self):
         return len(self.frames)
     
-    def addFrameObjCount(self, objCount):
-        self.objCount_eachFrame.append(objCount)
-        
-    def getFrameObjCount(self, frameIndex):
-        return self.objCount_eachFrame[frameIndex]
-    
-    def getFramesObjCounts(self, frameIndices):
-        return [self.objCount_eachFrame[i] for i in frameIndices]
-    
-    def getObjCountList(self):
-        return self.objCount_eachFrame
-    
     def saveToTextFile(self, saveDir_pathObj):
         # Create a text file to save the video data
         saveDir_pathObj.mkdir(parents=True, exist_ok=True)
@@ -43,12 +31,13 @@ class Video:
         # Save the video data
         saveFile.write('Total frames: ' + str(self.getNumFrames()) + '\n')
         
-        for i in range(self.getNumFrames()):
-            saveFile.write('Frame: ' + str(i) + '\t' + 'Total objects: ' + str(self.getFrameObjCount(i)) + '\n')
-            for j in range(self.getFrameObjCount(i)):
-                # Write position using obj.getX() and obj.getY()
-                saveFile.write('\t' + 'Object: ' + str(j) + '\t' + 'Position: [' + str(self.getFrame(i).getObject(j).getX()) + ' ' + str(self.getFrame(i).getObject(j).getY()) + ']' + '\t' + 'Size: ' + str(self.getFrame(i).getObject(j).getSize()) + '\n') 
-                # saveFile.write('\t' + 'Object: ' + str(j) + '\t' + 'Position: ' + str(self.getFrame(i).getObject(j).getPosition()) + '\t' + 'Size: ' + str(self.getFrame(i).getObject(j).getSize()) + '\n')
+        for frameInd in range(self.getNumFrames()):
+            frame = self.getFrame(frameInd)
+            saveFile.write('FrameNumber: ' + str(frame.getFrameNumber()) + '\t' + 'TotalObjects: ' + str(frame.getObjectCount()) + '\n')
+            for j in range(frame.getObjectCount()):
+                obj = frame.getObject(j)
+                
+                saveFile.write('\t' + 'FrameNumber: ' + str(obj.getFrameNumber()) + '\t' + 'ObjectIndex: ' + str(obj.getObjectIndex()) + '\t' + 'Position: [' + str(obj.getX()) + ' ' + str(obj.getY()) + ']' + '\t' + 'Size: ' + str(obj.getSize()) + '\n')
                 
         saveFile.close()
         assert savePath.exists()
@@ -61,7 +50,6 @@ class Video:
         # Read the video data
         lines = loadFile.readlines()
         self.frames = []
-        self.objCount_eachFrame = []
         
         lineIndex = 0
         totalFrames = int(lines[lineIndex].split()[2])  # Read the total number of frames from the first line
@@ -69,18 +57,20 @@ class Video:
         # Read the data of each frame
         for i in range(totalFrames):
             lineIndex += 1
-            # Read the Totals objects in the frame written as: saveFile.write('Frame: ' + str(i) + '\t' + 'Total objects: ' + str(self.getFrameObjCount(i)) + '\n')
-            totalObjects = int(lines[lineIndex].split()[4])
-            self.objCount_eachFrame.append(totalObjects)
             frame = Frame()
-            for j in range(totalObjects):
+            frameNumber = int(lines[lineIndex].split()[1])
+            objectCount = int(lines[lineIndex].split()[3])
+            frame.setFrameNumber(frameNumber)
+            frame.setObjectCount(objectCount)
+            for j in range(objectCount):
                 lineIndex += 1
-                # Read Position and Size value from the line example; Object: 0	Position: [45 28]	Size: 333
-                position = np.array([int(lines[lineIndex].split()[3][1:]), int(lines[lineIndex].split()[4][:-1])])
-                size = int(lines[lineIndex].split()[6])
+                objFrameNumber = int(lines[lineIndex].split()[1])
+                objIndex = int(lines[lineIndex].split()[3])
+                position = np.array([int(lines[lineIndex].split()[5][1:]), int(lines[lineIndex].split()[6][:-1])])
+                size = int(lines[lineIndex].split()[8])
                  
                 # Create a new object and add it to the frame
-                newObject = Object(position[0], position[1], size)
+                newObject = Object(objFrameNumber, objIndex, position[0], position[1], size)
                 frame.addObject(newObject)
                 
             # Add the frame to the video
@@ -93,3 +83,5 @@ class Video:
         if loadPath.exists():
             return True
         return False
+    
+    # def trackObjects():

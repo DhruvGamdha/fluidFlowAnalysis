@@ -2,10 +2,27 @@ import numpy as np
 
 class Frame:
     def __init__(self):
-        self.objects = []
+        self.frameNumber = None
+        self.objCount   = None
+        self.objects    = []
         
+    def setFrameNumber(self, frameNumber):
+        self.frameNumber = frameNumber
+    
     def addObject(self, object):
         self.objects.append(object)
+        
+    def setObjectCount(self, objCount):
+        self.objCount = objCount
+    
+    def getFrameNumber(self):
+        return self.frameNumber
+    
+    def getObjectCount(self):
+        return self.objCount
+    
+    def updateObjectCount(self):
+        self.objCount = len(self.objects)
     
     def getAllObjects(self):
         return self.objects
@@ -16,9 +33,6 @@ class Frame:
     def getObjects(self, objectIndices):
         return [self.objects[i] for i in objectIndices]
     
-    def getNumObjects(self):
-        return len(self.objects)
-    
     def removeObject_index(self, objectIndex):
         self.objects.pop(objectIndex)
     
@@ -28,9 +42,6 @@ class Frame:
     def removeObject_indices(self, objectIndices):
         for i in objectIndices:
             self.objects.pop(i)
-    
-    def removeAllObjects(self):
-        self.objects = []
     
     def getNearbyObjectIndices_object(self, object, distance):
         objectsIndices = []

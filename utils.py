@@ -146,16 +146,18 @@ def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTempl
     for frameNum in tqdm(allFramesNum, desc="Analyzing drops"):
         labelImg, count, imgShape = imgSegmentation(binaryFrameDir_pathObj, frameNameTemplate, frameNum, connectivity)
         frame = Frame()
-        for i in range(1,count+1):
-            rows, cols = np.where(labelImg == i)
+        frame.setFrameNumber(frameNum)
+        frame.setObjectCount(count)
+        for objLabel in range(1,count+1):
+            rows, cols = np.where(labelImg == objLabel)
             # Get the position (x, y) of the top left bounding box around the bubble, origin at the bottom left corner
             y   = imgShape[0] - np.min(rows)
             x   = np.min(cols)
-            obj = Object(x, y, len(rows))
+            objInd = objLabel - 1
+            obj = Object(frameNum, objInd, x, y, len(rows))
             frame.addObject(obj)
         
         video.addFrame(frame)
-        video.addFrameObjCount(count)
         plotFrameObjectAnalysis(frame, frameNum, count, imgShape, analysisBaseDir_pathObj, frameNameTemplate)
     video.saveToTextFile(analysisBaseDir_pathObj)        
     

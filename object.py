@@ -2,15 +2,29 @@
 import numpy as np
 
 class Object:
-    def __init__(self, x, y, size):
+    def __init__(self, frameNumber, objectIndex, x, y, size):
+        self.frameNumber = frameNumber
+        self.objectIndex = objectIndex
         self.position = np.array([x, y])
         self.size = size
+    
+    def setFrameNumber(self, frameNumber):
+        self.frameNumber = frameNumber
+    
+    def setObjectIndex(self, objectIndex):
+        self.objectIndex = objectIndex
     
     def setPosition(self, x, y):
         self.position = np.array([x, y])
     
     def setSize(self, size):
         self.size = size
+        
+    def getFrameNumber(self):
+        return self.frameNumber
+    
+    def getObjectIndex(self):
+        return self.objectIndex
         
     def getPosition(self):
         return self.position
