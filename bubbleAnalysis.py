@@ -6,7 +6,7 @@ class bubbleAnalysis:
         self.frameNameTemplate  = frameNameTemplate # Name template of the frames
         self.flowType           = flowType          # 1: fluidFlow1, 2: fluidFlow2
         self.videoFormat        = videoFormat       # Format of the video
-        self.AnalysedVideo      = None              # Video object for the analysed video
+        self.analysedVideo      = None              # Video object for the analysed video
         
     def getFramesFromVideo(self, videoFramesDir_pathObj):
         from utils import readAndSaveVid
@@ -34,7 +34,10 @@ class bubbleAnalysis:
     def extractFrameObjects(self, binaryFrameDir_pathObj, analysisBaseDir_pathObj):
         from utils import dropAnalysis
         params = self.flowTypeParams(self.flowType)
-        self.AnalysedVideo = dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, self.frameNameTemplate, params)
+        self.analysedVideo = dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, self.frameNameTemplate, params)
+    
+    def evaluateBubbleTrajectory(self, distanceThreshold, sizeThreshold):
+        self.analysedVideo.trackObjects(distanceThreshold, sizeThreshold)
     
     def flowTypeParams(self, flowType):
         para = {}

@@ -25,3 +25,6 @@ class Bubble:
     
     def getLatestObjectIndex(self):
         return self.trajectory[-1][1]
+    
+    def getTrajectoryLength(self):
+        return len(self.trajectory)

@@ -2,10 +2,11 @@ import numpy as np
 import pathlib as pl
 from object import Object
 from frame import Frame
+from bubble import Bubble
 class Video:
     def __init__(self):
         self.frames = []                # All Frames object orderly placed in a list 
-        self.bubbles = []               # All Bubble object orderly placed in a list
+        self.bubbles = []               # All Bubble placed in a list
         
     def addFrame(self, frame):
         self.frames.append(frame)
@@ -102,4 +103,59 @@ class Video:
         frameIndex = self.getFrameIndexFromNumber(frameNumber)
         return self.getObjectFromFrameAndObjectIndex(frameIndex, objectIndex)
     
-    # def trackObjects():
+    def getLatestBubbleObject(self, bubbleListIndex):
+        bubble = self.bubbles[bubbleListIndex]
+        latestLocation = bubble.getLatestLocation()
+        latestObj = self.getObject(latestLocation[0], latestLocation[1])
+        return latestObj
+        
+    def trackObjects(self, distanceThreshold, sizeThreshold):
+        
+        """ 
+        Algorithm:
+        - frame0 = getFrame(0)
+        - create bubble objects for all objects in frame0 and add them to the bubble list
+        - traverse through all frames[1:] and for each frame:
+            - create a copy of the frame
+            - for all bubbles in the bubble list:
+                - get the latest object of the bubble
+                - find the object in the frame that is closest to the latest object (CRITERIA)
+                - if found an object:
+                    - append the object to the bubble
+                    - remove the object from the frame copy
+            - for all the remaining objects in the frame copy:
+                - create a new bubble for the object and add it to the bubble list
+        """
+        bubbleIndex = 0
+        frame0      = self.getFrame(0)
+        for objInd in range(frame0.getObjectCount()):
+            obj         = frame0.getObject(objInd)
+            frameNum    = frame0.getFrameNumber()
+            objIndex    = obj.getObjectIndex()
+            bubble      = Bubble(bubbleIndex)
+            bubbleIndex += 1
+            bubble.appendTrajectory(frameNum, objIndex)
+            self.bubbles.append(bubble)
+        
+        for frameInd in range(1, self.getNumFrames()):
+            frame = self.getFrame(frameInd)
+            frameCopy = frame.copy()
+            for listInd in range(len(self.bubbles)):
+                bubble  = self.bubbles[listInd]
+                latestObj = self.getLatestBubbleObject(listInd)
+                closestObjsInd = frameCopy.getNearbyAndComparableSizeObjectIndices_object(latestObj, distanceThreshold, sizeThreshold)
+                if len(closestObjsInd) > 0:
+                    closestObj = frameCopy.getObject(closestObjsInd[0])
+                    bubble.appendTrajectory(frameCopy.getFrameNumber(), closestObj.getObjectIndex())
+                    frameCopy.removeObject_index(closestObjsInd[0])
+            for objInd in range(frameCopy.getObjectCount()):
+                obj         = frameCopy.getObject(objInd)
+                frameNum    = frame.getFrameNumber()
+                objIndex    = obj.getObjectIndex()
+                bubble      = Bubble(bubbleIndex)
+                bubbleIndex += 1
+                bubble.appendTrajectory(frameNum, objIndex)
+                self.bubbles.append(bubble)
+        
+        # Sort the bubbles by their trajectory length
+        self.bubbles.sort(key=lambda bubble: bubble.getTrajectoryLength(), reverse=True)

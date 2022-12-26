@@ -35,9 +35,7 @@ class Frame:
     
     def removeObject_index(self, objectIndex):
         self.objects.pop(objectIndex)
-    
-    def removeObject_object(self, object):
-        self.objects.remove(object)
+        self.updateObjectCount()
     
     def removeObject_indices(self, objectIndices):
         for i in objectIndices:
@@ -74,12 +72,12 @@ class Frame:
     def getNearbyAndComparableSizeObjectIndices_object(self, object, distance, sizeThreshold):
         nearbyObjectsIndices            = self.getNearbyObjectIndices_object(object, distance)
         comparableSizeObjectsIndices    = self.getComparableSizeObjectIndices_object(object, sizeThreshold)
-        return list(set(nearbyObjectsIndices).intersection(comparableSizeObjectsIndices))
+        return list(set(nearbyObjectsIndices).intersection(comparableSizeObjectsIndices)).sort()
     
     def getNearbyAndComparableSizeObjectIndices_positionAndSize(self, position, size, distance, sizeThreshold):
         nearbyObjectsIndices            = self.getNearbyObjectIndices_position(position, distance)
         comparableSizeObjectsIndices    = self.getComparableSizeObjectIndices_size(size, sizeThreshold)
-        return list(set(nearbyObjectsIndices).intersection(comparableSizeObjectsIndices))
+        return list(set(nearbyObjectsIndices).intersection(comparableSizeObjectsIndices)).sort()
     
     def getObjectPositionList(self):
         x = []
@@ -95,3 +93,11 @@ class Frame:
         for object in self.objects:
             size.append(object.getSize())
         return size
+    
+    def copy(self):
+        frame = Frame()
+        frame.setFrameNumber(self.frameNumber)
+        frame.setObjectCount(self.objCount)
+        for object in self.objects:
+            frame.addObject(object)
+        return frame
