@@ -1,8 +1,27 @@
-# Bubble class: To store the bubble information
-
 import numpy as np
-import cv2
 
-class bubble:
-    def __init__(self, image, labels):
-        pass
+class Bubble:
+    def __init__(self, bubbleIndex):
+        self.trajectory     = []                # 2D List of [frameNumber, objectIndex]
+        self.bubbleIndex    = bubbleIndex       # bubble index is the index of the bubble in the bubble list
+        
+    def appendTrajectory(self, frameNumber, objectIndex):
+        self.trajectory.append([frameNumber, objectIndex])
+    
+    def setBubbleIndex(self, bubbleIndex):
+        self.bubbleIndex = bubbleIndex
+    
+    def getFullTrajectory(self):
+        return self.trajectory
+    
+    def getBubbleIndex(self):
+        return self.bubbleIndex
+    
+    def getLatestLocation(self):
+        return self.trajectory[-1]
+    
+    def getLatestFrameNumber(self):
+        return self.trajectory[-1][0]
+    
+    def getLatestObjectIndex(self):
+        return self.trajectory[-1][1]

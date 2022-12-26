@@ -90,4 +90,16 @@ class Video:
             return True
         return False
     
+    def getFrameIndexFromNumber(self, frameNumber):
+        startFrameNumber = self.frames[0].getFrameNumber()
+        frameIndex = frameNumber - startFrameNumber
+        return frameIndex
+    
+    def getObjectFromFrameAndObjectIndex(self, frameIndex, objectIndex):
+        return self.frames[frameIndex].getObject(objectIndex)
+    
+    def getObject(self, frameNumber, objectIndex):
+        frameIndex = self.getFrameIndexFromNumber(frameNumber)
+        return self.getObjectFromFrameAndObjectIndex(frameIndex, objectIndex)
+    
     # def trackObjects():
