@@ -184,6 +184,12 @@ def getFrameNumbers_ordered(framePathObj, nameTemplate):
         frameNum        = parse.parse(nameTemplate, frameName).fixed[0]
         allFramesNum[i] = frameNum
     allFramesNum = np.sort(allFramesNum).astype(int)                # sort the frame numbers
+    
+    # Check if the frame numbers are continuous
+    if not np.array_equal(allFramesNum, np.arange(allFramesNum[0], allFramesNum[-1]+1)):
+        print("Frame numbers are not continuous")
+        exit()
+    
     return allFramesNum
 
 def DoNumExistingFramesMatch(frameDir_pathObj, numFramesToCreate):
