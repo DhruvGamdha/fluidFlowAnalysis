@@ -186,9 +186,9 @@ class Video:
         
         # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
         vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')  # codec for .mp4 file
-        videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'videoTrajectory_bubbleID{}.mp4'.format(bubble.getBubbleIndex())),vidCodec, fps, (videoWidth, videoHeight))
+        videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'videoTrajectory_bubbleID{}_initSize{}.mp4'.format(bubble.getBubbleIndex(), size[0])),vidCodec, fps, (videoWidth, videoHeight))
                
-        for i in tqdm(range(len(trajectory)) , desc='Plotting trajectory for bubbleID = {}'.format(bubble.getBubbleIndex())):
+        for i in tqdm(range(len(trajectory)) , desc='Plotting trajectory for bubbleID = {}, initSize = {}'.format(bubble.getBubbleIndex(), size[0])):
             # Create plot showing the object position (x, y) with marker size = object size
             videoArray, videoWidth, videoHeight = self.plotTrajectory_subFunc(position[i], size[i], trajectory[i][0], frameNameTemplate, binaryFrameDir_pathObj)
             # Write the combined frame to the video
