@@ -181,7 +181,7 @@ class Video:
         trajectory = bubble.getFullTrajectory()
         position, size = self.getPositionAndSizeArrayFromTrajectory(trajectory)
         
-        _, videoWidth, videoHeight = self.plotTrajectory_subFunc(self, position[0], size[0], trajectory[0][0], frameNameTemplate, binaryFrameDir_pathObj)
+        _, videoWidth, videoHeight = self.plotTrajectory_subFunc(position[0], size[0], trajectory[0][0], frameNameTemplate, binaryFrameDir_pathObj)
         
         # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
         vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')  # codec for .mp4 file
@@ -212,7 +212,7 @@ class Video:
             
         # Combine the plot and the binary frame
         videoWidth  = frameArray.shape[1] + plotArray.shape[1]
-        videoHeight = frameArray.shape[0]
+        videoHeight = max(frameArray.shape[0], plotArray.shape[0])
         videoArray  = np.zeros((videoHeight, videoWidth, 3), dtype=np.uint8)
         videoArray[:, :frameArray.shape[1], :] = frameArray
         videoArray[:, frameArray.shape[1]:, :] = plotArray
