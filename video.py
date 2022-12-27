@@ -214,6 +214,12 @@ class Video:
         videoWidth  = frameArray.shape[1] + plotArray.shape[1]
         videoHeight = max(frameArray.shape[0], plotArray.shape[0])
         videoArray  = np.zeros((videoHeight, videoWidth, 3), dtype=np.uint8)
+        
+        if frameArray.shape[0] < videoHeight: # pad the frameArray
+            frameArray = np.pad(frameArray, ((0, videoHeight - frameArray.shape[0]), (0, 0), (0, 0)), 'constant')
+        if plotArray.shape[0] < videoHeight: # pad the plotArray
+            plotArray = np.pad(plotArray, ((0, videoHeight - plotArray.shape[0]), (0, 0), (0, 0)), 'constant')
+        
         videoArray[:, :frameArray.shape[1], :] = frameArray
         videoArray[:, frameArray.shape[1]:, :] = plotArray
         
