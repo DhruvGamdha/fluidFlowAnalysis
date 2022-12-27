@@ -203,16 +203,17 @@ class Video:
         frameArray  = cv2.imread(str(framePath))
         
         # Set figsize based on the binary frame size
-        sizeReductionFactor = 120
-        figsize = (int(frameArray.shape[1] / sizeReductionFactor), int(frameArray.shape[0] / sizeReductionFactor)) 
+        sizeReductionFactor = 0.01
+        subtractAmount = 4
+        figsize = (frameArray.shape[0] * sizeReductionFactor - subtractAmount, frameArray.shape[0] * sizeReductionFactor) 
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111)
         ax.scatter(position[0], position[1], s=size)
         ax.set_xlim(0, frameArray.shape[1])
         ax.set_ylim(0, frameArray.shape[0])
         ax.set_aspect('equal')
-        fig.tight_layout()
-        ax.text(0.05, 0.95, 'frameNumber = {}'.format(frameNumber), horizontalalignment='left', verticalalignment='top', transform=ax.transAxes) # add frame number to plot
+        ax.text(0.05, 0.95, 'fN = {}'.format(frameNumber), horizontalalignment='left', verticalalignment='top', transform=ax.transAxes, fontsize=6)
+        plt.tight_layout()
         
         # Get plot as np array
         fig.canvas.draw()
