@@ -20,10 +20,10 @@ class Bubble:
     def getLatestLocation(self):
         return self.trajectory[-1]
     
-    def getLatestFrameNumber(self):
+    def getLatestLocation_FrameNumber(self):
         return self.trajectory[-1][0]
     
-    def getLatestObjectIndex(self):
+    def getLatestLocation_ObjectIndex(self):
         return self.trajectory[-1][1]
     
     def getTrajectoryLength(self):

@@ -3,6 +3,8 @@ import pathlib as pl
 from object import Object
 from frame import Frame
 from bubble import Bubble
+import cv2
+import matplotlib.pyplot as plt
 class Video:
     def __init__(self):
         self.frames = []                # All Frames object orderly placed in a list 
@@ -99,18 +101,19 @@ class Video:
     def getObjectFromFrameAndObjectIndex(self, frameIndex, objectIndex):
         return self.frames[frameIndex].getObject(objectIndex)
     
-    def getObject(self, frameNumber, objectIndex):
+    def getObjectFromBubbleLoc(self, bubbleLocation):
+        frameNumber = bubbleLocation[0]
+        objectIndex = bubbleLocation[1]
         frameIndex = self.getFrameIndexFromNumber(frameNumber)
         return self.getObjectFromFrameAndObjectIndex(frameIndex, objectIndex)
     
     def getLatestBubbleObject(self, bubbleListIndex):
         bubble = self.bubbles[bubbleListIndex]
         latestLocation = bubble.getLatestLocation()
-        latestObj = self.getObject(latestLocation[0], latestLocation[1])
+        latestObj = self.getObjectFromBubbleLoc(latestLocation)
         return latestObj
         
     def trackObjects(self, distanceThreshold, sizeThreshold):
-        
         """ 
         Algorithm:
         - frame0 = getFrame(0)
@@ -159,3 +162,60 @@ class Video:
         
         # Sort the bubbles by their trajectory length
         self.bubbles.sort(key=lambda bubble: bubble.getTrajectoryLength(), reverse=True)
+    
+    def getPositionAndSizeArrayFromTrajectory(self, trajectory):
+        position = np.zeros((len(trajectory), 2))
+        size = np.zeros(len(trajectory))
+        for i in range(len(trajectory)):
+            loc = trajectory[i]
+            obj = self.getObjectFromBubbleLoc(loc)
+            position[i, :] = obj.getPosition()
+            size[i] = obj.getSize()
+        return position, size
+    
+    def plotTrajectory(self, bubbleListIndex, binaryFrameDir_pathObj, videoDir_pathObj, fps, frameNameTemplate):
+        """ 
+        Plot 
+        """
+        bubble = self.bubbles[bubbleListIndex]
+        trajectory = bubble.getFullTrajectory()
+        position, size = self.getPositionAndSizeArrayFromTrajectory(trajectory)
+        
+        _, videoWidth, videoHeight = self.plotTrajectory_subFunc(self, position[0], size[0], trajectory[0][0], frameNameTemplate, binaryFrameDir_pathObj)
+        
+        # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
+        vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')  # codec for .mp4 file
+        videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'videoTrajectory_bubbleID{}.mp4'.format(bubble.getBubbleIndex())),vidCodec, fps, (videoWidth, videoHeight))
+               
+        for i in range(len(trajectory)):
+            # Create plot showing the object position (x, y) with marker size = object size
+            videoArray, videoWidth, videoHeight = self.plotTrajectory_subFunc(self, position[i], size[i], trajectory[i][0], frameNameTemplate, binaryFrameDir_pathObj)
+            # Write the combined frame to the video
+            videoWriter.write(videoArray)
+             
+        videoWriter.release()
+        
+    def plotTrajectory_subFunc(self, position, size, frameNumber, frameNameTemplate, binaryFrameDir_pathObj):
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111)
+        ax.scatter(position[0], position[1], s=size)
+        
+        # Get plot as np array
+        fig.canvas.draw()
+        plotArray = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+        plotArray = plotArray.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        
+        # Get the binary frame as np array
+        frameName   = frameNameTemplate.format(frameNumber)
+        framePath   = binaryFrameDir_pathObj / frameName
+        frameArray  = cv2.imread(str(framePath))
+            
+        # Combine the plot and the binary frame
+        videoWidth  = frameArray.shape[1] + plotArray.shape[1]
+        videoHeight = frameArray.shape[0]
+        videoArray  = np.zeros((videoHeight, videoWidth, 3), dtype=np.uint8)
+        videoArray[:, :frameArray.shape[1], :] = frameArray
+        videoArray[:, frameArray.shape[1]:, :] = plotArray
+        
+        plt.close(fig)
+        return videoArray, videoWidth, videoHeight

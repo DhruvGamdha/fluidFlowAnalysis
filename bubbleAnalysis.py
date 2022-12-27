@@ -39,6 +39,9 @@ class bubbleAnalysis:
     def evaluateBubbleTrajectory(self, distanceThreshold, sizeThreshold):
         self.analysedVideo.trackObjects(distanceThreshold, sizeThreshold)
     
+    def plotBubbleTrajectory(self, bubbleListIndex, binaryFrameDir_pathObj, videoDir_pathObj):
+        self.analysedVideo.plotTrajectory(bubbleListIndex, binaryFrameDir_pathObj, videoDir_pathObj, self.videoFPS, self.frameNameTemplate)
+    
     def flowTypeParams(self, flowType):
         para = {}
         if flowType == 1:
