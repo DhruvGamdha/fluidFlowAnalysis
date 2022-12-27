@@ -186,9 +186,9 @@ class Video:
         
         # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
         vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')  # codec for .mp4 file
-        videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'videoTrajectory_bubbleID{}_initSize{}.mp4'.format(bubble.getBubbleIndex(), size[0])),vidCodec, fps, (videoWidth, videoHeight))
+        videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'videoBubbleTrajectory_Size{:04d}.mp4'.format(int(size[0]))),vidCodec, fps, (videoWidth, videoHeight))
                
-        for i in tqdm(range(len(trajectory)) , desc='Plotting trajectory for bubbleID = {}, initSize = {}'.format(bubble.getBubbleIndex(), size[0])):
+        for i in tqdm(range(len(trajectory)) , desc='Plotting trajectory for Size = {:04d}'.format(int(size[0]))):
             # Create plot showing the object position (x, y) with marker size = object size
             videoArray, videoWidth, videoHeight = self.plotTrajectory_subFunc(position[i], size[i], trajectory[i][0], frameNameTemplate, binaryFrameDir_pathObj)
             # Write the combined frame to the video
@@ -202,18 +202,23 @@ class Video:
         framePath   = binaryFrameDir_pathObj / frameName
         frameArray  = cv2.imread(str(framePath))
         
-        fig = plt.figure(figsize=(10, 10))
+        # Set figsize based on the binary frame size
+        sizeReductionFactor = 120
+        figsize = (int(frameArray.shape[1] / sizeReductionFactor), int(frameArray.shape[0] / sizeReductionFactor)) 
+        fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111)
         ax.scatter(position[0], position[1], s=size)
         ax.set_xlim(0, frameArray.shape[1])
         ax.set_ylim(0, frameArray.shape[0])
+        ax.set_aspect('equal')
+        fig.tight_layout()
+        ax.text(0.05, 0.95, 'frameNumber = {}'.format(frameNumber), horizontalalignment='left', verticalalignment='top', transform=ax.transAxes) # add frame number to plot
         
         # Get plot as np array
         fig.canvas.draw()
         plotArray = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
         plotArray = plotArray.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-        
-            
+    
         # Combine the plot and the binary frame
         videoWidth  = frameArray.shape[1] + plotArray.shape[1]
         videoHeight = max(frameArray.shape[0], plotArray.shape[0])
