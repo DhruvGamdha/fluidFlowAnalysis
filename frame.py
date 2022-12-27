@@ -72,12 +72,16 @@ class Frame:
     def getNearbyAndComparableSizeObjectIndices_object(self, object, distance, sizeThreshold):
         nearbyObjectsIndices            = self.getNearbyObjectIndices_object(object, distance)
         comparableSizeObjectsIndices    = self.getComparableSizeObjectIndices_object(object, sizeThreshold)
-        return list(set(nearbyObjectsIndices).intersection(comparableSizeObjectsIndices)).sort()
+        indices = list(set(nearbyObjectsIndices).intersection(comparableSizeObjectsIndices))
+        indices.sort()
+        return indices
     
     def getNearbyAndComparableSizeObjectIndices_positionAndSize(self, position, size, distance, sizeThreshold):
         nearbyObjectsIndices            = self.getNearbyObjectIndices_position(position, distance)
         comparableSizeObjectsIndices    = self.getComparableSizeObjectIndices_size(size, sizeThreshold)
-        return list(set(nearbyObjectsIndices).intersection(comparableSizeObjectsIndices)).sort()
+        indices = list(set(nearbyObjectsIndices).intersection(comparableSizeObjectsIndices))
+        indices.sort()
+        return indices
     
     def getObjectPositionList(self):
         x = []
