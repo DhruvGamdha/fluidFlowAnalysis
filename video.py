@@ -5,6 +5,7 @@ from frame import Frame
 from bubble import Bubble
 import cv2
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 class Video:
     def __init__(self):
         self.frames = []                # All Frames object orderly placed in a list 
@@ -140,7 +141,7 @@ class Video:
             bubble.appendTrajectory(frameNum, objIndex)
             self.bubbles.append(bubble)
         
-        for frameInd in range(1, self.getNumFrames()):
+        for frameInd in tqdm(range(1, self.getNumFrames()), desc='Tracking objects'):
             frame = self.getFrame(frameInd)
             frameCopy = frame.copy()
             for listInd in range(len(self.bubbles)):
@@ -187,28 +188,31 @@ class Video:
         vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')  # codec for .mp4 file
         videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'videoTrajectory_bubbleID{}.mp4'.format(bubble.getBubbleIndex())),vidCodec, fps, (videoWidth, videoHeight))
                
-        for i in range(len(trajectory)):
+        for i in tqdm(range(len(trajectory)) , desc='Plotting trajectory for bubbleID = {}'.format(bubble.getBubbleIndex())):
             # Create plot showing the object position (x, y) with marker size = object size
-            videoArray, videoWidth, videoHeight = self.plotTrajectory_subFunc(self, position[i], size[i], trajectory[i][0], frameNameTemplate, binaryFrameDir_pathObj)
+            videoArray, videoWidth, videoHeight = self.plotTrajectory_subFunc(position[i], size[i], trajectory[i][0], frameNameTemplate, binaryFrameDir_pathObj)
             # Write the combined frame to the video
             videoWriter.write(videoArray)
              
         videoWriter.release()
         
     def plotTrajectory_subFunc(self, position, size, frameNumber, frameNameTemplate, binaryFrameDir_pathObj):
+        # Get the binary frame as np array
+        frameName   = frameNameTemplate.format(frameNumber)
+        framePath   = binaryFrameDir_pathObj / frameName
+        frameArray  = cv2.imread(str(framePath))
+        
         fig = plt.figure(figsize=(10, 10))
         ax = fig.add_subplot(111)
         ax.scatter(position[0], position[1], s=size)
+        ax.set_xlim(0, frameArray.shape[1])
+        ax.set_ylim(0, frameArray.shape[0])
         
         # Get plot as np array
         fig.canvas.draw()
         plotArray = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
         plotArray = plotArray.reshape(fig.canvas.get_width_height()[::-1] + (3,))
         
-        # Get the binary frame as np array
-        frameName   = frameNameTemplate.format(frameNumber)
-        framePath   = binaryFrameDir_pathObj / frameName
-        frameArray  = cv2.imread(str(framePath))
             
         # Combine the plot and the binary frame
         videoWidth  = frameArray.shape[1] + plotArray.shape[1]
