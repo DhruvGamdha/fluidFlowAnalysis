@@ -6,6 +6,7 @@ from bubble import Bubble
 import cv2
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from PIL import ImageColor
 class Video:
     def __init__(self):
         self.frames = []                # All Frames object orderly placed in a list 
@@ -193,7 +194,70 @@ class Video:
             obj = self.getObjectFromBubbleLoc(loc)
             position[i, :] = obj.getPosition()
             size[i] = obj.getSize()
-        return position, size
+            rows, cols = obj.getPixelRowsCols()
+        return position, size, rows, cols
+    
+    def app2_plotTrajectory(self, bubbleListIndices, binaryFrameDir_pathObj, videoFramesDir_pathObj, fps, frameNameTemplate):
+        """ 
+        Algorithm:
+        # To create frames:
+        - Travel through the bubbleListIndices and for each bubble:
+            - Get the full trajectory of the bubble
+            - Get the corresponding color for the bubble
+            - For each frame and object pair in the trajectory:
+                - read the frame from videoFramesDir_pathObj if it exists else read it from binaryFrameDir_pathObj
+                - get the pixel rows and cols of the object
+                - color the pixels in the frame with the corresponding color
+                - write the frame to videoFramesDir_pathObj
+        # To create a video:
+        - Create a video writer object
+        - Traverse through len(self.frames) and for each frame:
+            - read the frame from videoFramesDir_pathObj if it exists else read it from binaryFrameDir_pathObj
+            - write the frame to the video writer object
+        - Release the video writer object
+        - Delete the frames in videoFramesDir_pathObj
+        """
+        # To create frames:
+        colorIndex = 0
+        for bubbleListIndex in tqdm(bubbleListIndices, desc='Creating frames'):
+            bubble = self.bubbles[bubbleListIndex]
+            trajectory = bubble.getFullTrajectory()
+            position, size, rows, cols = self.getPositionAndSizeArrayFromTrajectory(trajectory)
+            color = bubble.getColor(colorIndex)
+            colorIndex += 1
+            for i in range(len(trajectory)):
+                frameNum = trajectory[i][0]
+                frameName = frameNameTemplate.format(frameNum)
+                # Check if the frame exists in videoFramesDir_pathObj
+                if (videoFramesDir_pathObj / frameName).exists():
+                    frame = cv2.imread(str(videoFramesDir_pathObj / frameName))
+                else:
+                    frame = cv2.imread(str(binaryFrameDir_pathObj / frameName))
+                frame[rows, cols, :] = color
+                cv2.imwrite(str(videoFramesDir_pathObj / frameName), frame)
+        
+        frameNum = self.getFrame(0).getFrameNumber()
+        frameName = frameNameTemplate.format(frameNum)
+        frame = cv2.imread(str(videoFramesDir_pathObj / frameName))
+        height, width, _ = frame.shape
+        # To create a video:
+        vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
+        videoWriter = cv2.VideoWriter(str(videoFramesDir_pathObj / 'videoBubbleTrajectory_numBubbles{:03d}.mp4'.format(len(bubbleListIndices))), vidCodec, fps, (width, height))
+        for frameInd in tqdm(range(self.getNumFrames()), desc='Creating video'):
+            frameNum = self.getFrame(frameInd).getFrameNumber()
+            frameName = frameNameTemplate.format(frameNum)
+            if (videoFramesDir_pathObj / frameName).exists():
+                frame = cv2.imread(str(videoFramesDir_pathObj / frameName))
+            else:
+                frame = cv2.imread(str(binaryFrameDir_pathObj / frameName))
+            videoWriter.write(frame)
+        videoWriter.release()
+        
+        # Delete the frames in videoFramesDir_pathObj
+        frameCountInVidDir = len(list(videoFramesDir_pathObj.glob('*.png')))
+        if frameCountInVidDir > 0:
+            for frameName in videoFramesDir_pathObj.glob('*.png'):
+                frameName.unlink()
     
     def plotTrajectory(self, bubbleListIndex, binaryFrameDir_pathObj, videoDir_pathObj, fps, frameNameTemplate):
         """ 
@@ -201,7 +265,7 @@ class Video:
         """
         bubble = self.bubbles[bubbleListIndex]
         trajectory = bubble.getFullTrajectory()
-        position, size = self.getPositionAndSizeArrayFromTrajectory(trajectory)
+        position, size, rows, cols = self.getPositionAndSizeArrayFromTrajectory(trajectory)
         
         _, videoWidth, videoHeight = self.plotTrajectory_subFunc(position[0], size[0], trajectory[0][0], frameNameTemplate, binaryFrameDir_pathObj)
         
@@ -334,10 +398,13 @@ class Video:
         #E85EBE 
         """
         colorsList = ['#00FF00', '#0000FF', '#FF0000', '#01FFFE', '#FFA6FE', '#FFDB66', '#006401', '#010067', '#95003A', '#007DB5', '#FF00F6', '#FFEEE8', '#774D00', '#90FB92', '#0076FF', '#D5FF00', '#FF937E', '#6A826C', '#FF029D', '#FE8900', '#7A4782', '#7E2DD2', '#85A900', '#FF0056', '#A42400', '#00AE7E', '#683D3B', '#BDC6FF', '#263400', '#BDD393', '#00B917', '#9E008E', '#001544', '#C28C9F', '#FF74A3', '#01D0FF', '#004754', '#E56FFE', '#788231', '#0E4CA1', '#91D0CB', '#BE9970', '#968AE8', '#BB8800', '#43002C', '#DEFF74', '#00FFC6', '#FFE502', '#620E00', '#008F9C', '#98FF52', '#7544B1', '#B500FF', '#00FF78', '#FF6E41', '#005F39', '#6B6882', '#5FAD4E', '#A75740', '#A5FFD2', '#FFB167', '#009BFF', '#E85EBE']
-        
+        colorHex = '#000000'
         if n < len(colorsList):
-            return colorsList[n]
+            colorHex = colorsList[n]
         else:
-            return '#FFFFFF'
+            colorHex = '#000000'
         
+        # get RGB values from hex using ImageColor.getcolor
+        colorRGB = ImageColor.getcolor(colorHex, "RGB")
+        return colorRGB
         

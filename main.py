@@ -38,7 +38,8 @@ if __name__ == "__main__":
                                     'analysis/pixSize/frames', 
                                     'analysis/vertPos/frames', 
                                     'analysis/dynamicMarker/frames',
-                                    'analysis/bubbleTracking/']  
+                                    'analysis/bubbleTracking/',
+                                    'analysis/bubbleTracking/frames']  
     
     inpDirObj = directories(inpPth_base, inpTemplate, inpTempIndex, inpDirsToCreate_wrtTemplate) # Create input directories
     inpDirObj.addDir_usingKey('__base__', 'original/frames')                                    # create original/frames directory wrt base directory
@@ -63,3 +64,4 @@ if __name__ == "__main__":
     analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/dynamicMarker/frames'))
     analysis.evaluateBubbleTrajectory(distanceThreshold, sizeThreshold)
     # analysis.plotBubbleTrajectory(bubbleListIndex, outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/bubbleTracking/'))
+    analysis.app2plotBubbleTrajectory(bubbleListIndex, outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/bubbleTracking/franes'))

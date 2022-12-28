@@ -43,6 +43,9 @@ class bubbleAnalysis:
         for ind in bubbleListIndex:
             self.analysedVideo.plotTrajectory(ind, binaryFrameDir_pathObj, videoDir_pathObj, self.videoFPS, self.frameNameTemplate)
     
+    def app2plotBubbleTrajectory(self, bubbleListIndices, binaryFrameDir_pathObj, videoFramesDir_pathObj):
+        self.analysedVideo.app2_plotTrajectory(bubbleListIndices, binaryFrameDir_pathObj, videoFramesDir_pathObj, self.videoFPS, self.frameNameTemplate)
+    
     def flowTypeParams(self, flowType):
         para = {}
         if flowType == 1:
