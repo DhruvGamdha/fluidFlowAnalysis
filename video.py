@@ -194,7 +194,7 @@ class Video:
             obj = self.getObjectFromBubbleLoc(loc)
             position[i, :] = obj.getPosition()
             size[i] = obj.getSize()
-            rows, cols = obj.getPixelRowsCols()
+            rows, cols = obj.getAllPixelLocs()
         return position, size, rows, cols
     
     def app2_plotTrajectory(self, bubbleListIndices, binaryFrameDir_pathObj, videoFramesDir_pathObj, fps, frameNameTemplate):
@@ -223,7 +223,7 @@ class Video:
             bubble = self.bubbles[bubbleListIndex]
             trajectory = bubble.getFullTrajectory()
             position, size, rows, cols = self.getPositionAndSizeArrayFromTrajectory(trajectory)
-            color = bubble.getColor(colorIndex)
+            color = self.getColor(colorIndex)
             colorIndex += 1
             for i in range(len(trajectory)):
                 frameNum = trajectory[i][0]
@@ -238,7 +238,7 @@ class Video:
         
         frameNum = self.getFrame(0).getFrameNumber()
         frameName = frameNameTemplate.format(frameNum)
-        frame = cv2.imread(str(videoFramesDir_pathObj / frameName))
+        frame = cv2.imread(str(binaryFrameDir_pathObj / frameName))
         height, width, _ = frame.shape
         # To create a video:
         vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
