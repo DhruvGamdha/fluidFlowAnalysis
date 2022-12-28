@@ -49,7 +49,7 @@ if __name__ == "__main__":
     flowType            = 2
     inpVideoFormat      = '.avi'
     distanceThreshold   = 10
-    sizeThreshold       = 10
+    sizeThreshold       = 35
     bubbleListIndex     = range(20)
     analysis            = bubbleAnalysis(videoFPS, frameNameTemplate, flowType, inpVideoFormat)
     

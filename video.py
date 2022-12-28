@@ -194,7 +194,7 @@ class Video:
         
         # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
         vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')  # codec for .mp4 file
-        videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'videoBubbleTrajectory_Size{:04d}.mp4'.format(int(size[0]))),vidCodec, fps, (videoWidth, videoHeight))
+        videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'videoBubbleTrajectory_Size{:05d}_fnstrt{:05d}_fnend{:05d}.mp4'.format(int(size[0]), trajectory[0][0], trajectory[-1][0])),vidCodec, fps, (videoWidth, videoHeight))
                
         for i in tqdm(range(len(trajectory)) , desc='Plotting trajectory for Size = {:04d}'.format(int(size[0]))):
             # Create plot showing the object position (x, y) with marker size = object size
