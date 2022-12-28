@@ -113,6 +113,10 @@ class Video:
         latestLocation = bubble.getLatestLocation()
         latestObj = self.getObjectFromBubbleLoc(latestLocation)
         return latestObj
+    
+    def getBubbleSize(self, location):
+        obj = self.getObjectFromBubbleLoc(location)
+        return obj.getSize()
         
     def trackObjects(self, distanceThreshold, sizeThreshold):
         """ 
@@ -162,7 +166,11 @@ class Video:
                 self.bubbles.append(bubble)
         
         # Sort the bubbles by their trajectory length
-        self.bubbles.sort(key=lambda bubble: bubble.getTrajectoryLength(), reverse=True)
+        # self.bubbles.sort(key=lambda bubble: bubble.getTrajectoryLength(), reverse=True)
+        
+        # Sort the bubbles by their size (largest to smallest)
+        self.bubbles.sort(key=lambda bubble: self.getBubbleSize(bubble.getLocation(0)), reverse=True)
+        
     
     def getPositionAndSizeArrayFromTrajectory(self, trajectory):
         position = np.zeros((len(trajectory), 2))

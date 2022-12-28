@@ -50,7 +50,7 @@ if __name__ == "__main__":
     inpVideoFormat      = '.avi'
     distanceThreshold   = 10
     sizeThreshold       = 10
-    bubbleListIndex     = range(3, 20)
+    bubbleListIndex     = range(20)
     analysis            = bubbleAnalysis(videoFPS, frameNameTemplate, flowType, inpVideoFormat)
     
     analysis.getFramesFromVideo(inpDirObj.getDirPathObj('original/frames'))
