@@ -86,10 +86,12 @@ class Video:
                 size = int(lines[lineIndex].split()[8])
                 lineIndex += 1
                 pixelLocs = lines[lineIndex].split()
-                pixelLocs = np.array(pixelLocs[1:-1], dtype=np.int32)
-                pixelLocs = pixelLocs.reshape(-1, 2)
-                rows = pixelLocs[:, 0]
-                cols = pixelLocs[:, 1]
+                rows = []
+                cols = []
+                for k in range(size):
+                    rows.append(int(pixelLocs[2*k]))
+                    cols.append(int(pixelLocs[2*k+1]))
+                
                 # Create a new object and add it to the frame
                 newObject = Object(objFrameNumber, objIndex, position[0], position[1], size, rows, cols)
                 frame.addObject(newObject)
