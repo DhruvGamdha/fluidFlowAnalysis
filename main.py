@@ -30,8 +30,8 @@ if __name__ == "__main__":
     outpPth_base  = 'results/fluidFlow2/'
     inpTemplate   = 'version_{:02d}'
     outpTemplate  = 'version_{:02d}'
-    inpTempIndex  = 1
-    outpTempIndex = 1
+    inpTemplateIndex  = 1
+    outpTemplateIndex = 2
     inpDirsToCreate_wrtTemplate = [ 'all/frames',
                                     'set1/frames']
     outpDirsToCreate_wrtTemplate= [ 'binary/all/frames', 
@@ -41,16 +41,14 @@ if __name__ == "__main__":
                                     'analysis/bubbleTracking/',
                                     'analysis/bubbleTracking/frames']  
     
-    inpDirObj = directories(inpPth_base, inpTemplate, inpTempIndex, inpDirsToCreate_wrtTemplate) # Create input directories
+    inpDirObj = directories(inpPth_base, inpTemplate, inpTemplateIndex, inpDirsToCreate_wrtTemplate) # Create input directories
     inpDirObj.addDir_usingKey('__base__', 'original/frames')                                    # create original/frames directory wrt base directory
-    outpDirObj = directories(outpPth_base, outpTemplate, outpTempIndex, outpDirsToCreate_wrtTemplate)  # Create output directories
+    outpDirObj = directories(outpPth_base, outpTemplate, outpTemplateIndex, outpDirsToCreate_wrtTemplate)  # Create output directories
     
     videoFPS            = 30
     frameNameTemplate   = 'frame_{:04d}.png'
     flowType            = 2
     inpVideoFormat      = '.avi'
-    distanceThreshold   = 10
-    sizeThreshold       = 35
     bubbleListIndex     = range(20)
     analysis            = bubbleAnalysis(videoFPS, frameNameTemplate, flowType, inpVideoFormat)
     
@@ -62,6 +60,6 @@ if __name__ == "__main__":
     analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/pixSize/frames'))
     analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/vertPos/frames'))
     analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/dynamicMarker/frames'))
-    analysis.evaluateBubbleTrajectory(distanceThreshold, sizeThreshold)
-    # analysis.plotBubbleTrajectory(bubbleListIndex, outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/bubbleTracking/'))
-    analysis.app2plotBubbleTrajectory(bubbleListIndex, outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/bubbleTracking/frames'))
+    analysis.evaluateBubbleTrajectory()
+    analysis.plotBubbleTrajectory(bubbleListIndex, outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/bubbleTracking/'))
+    # analysis.app2plotBubbleTrajectory(bubbleListIndex, outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/bubbleTracking/frames'))

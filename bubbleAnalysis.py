@@ -36,8 +36,9 @@ class bubbleAnalysis:
         params = self.flowTypeParams(self.flowType)
         self.analysedVideo = dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, self.frameNameTemplate, params)
     
-    def evaluateBubbleTrajectory(self, distanceThreshold, sizeThreshold):
-        self.analysedVideo.trackObjects(distanceThreshold, sizeThreshold)
+    def evaluateBubbleTrajectory(self):
+        params = self.flowTypeParams(self.flowType)
+        self.analysedVideo.trackObjects(params)
     
     def plotBubbleTrajectory(self, bubbleListIndex, binaryFrameDir_pathObj, videoDir_pathObj):
         for ind in bubbleListIndex:
@@ -58,13 +59,6 @@ class bubbleAnalysis:
             para['constantSub']  = 5
             para['connectivity'] = 2
             para['minSize']      = 1
-            ''' 
-            # fluidFlow1 crop_v3 parameters
-            para['top']     = 120
-            para['bottom']  = 700
-            para['left']    = 150
-            para['right']   = 250 
-            '''   
             return para
         
         elif flowType == 2:
@@ -77,6 +71,12 @@ class bubbleAnalysis:
             para['constantSub']  = 7
             para['connectivity'] = 1
             para['minSize']      = 1
+            para['distanceThreshold'] = 10
+            para['sizeThreshold']     = 35
+            
+            # Testing fluidFlow2 parameters
+            para['connectivity'] = 2
+            para['minSize']      = 5
             return para
         
         else:

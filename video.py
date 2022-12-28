@@ -132,7 +132,7 @@ class Video:
         obj = self.getObjectFromBubbleLoc(location)
         return obj.getSize()
         
-    def trackObjects(self, distanceThreshold, sizeThreshold):
+    def trackObjects(self, params):
         """ 
         Algorithm:
         - frame0 = getFrame(0)
@@ -148,6 +148,8 @@ class Video:
             - for all the remaining objects in the frame copy:
                 - create a new bubble for the object and add it to the bubble list
         """
+        distanceThreshold = params['distanceThreshold']
+        sizeThreshold = params['sizeThreshold']
         bubbleIndex = 0
         frame0      = self.getFrame(0)
         for objInd in range(frame0.getObjectCount()):
@@ -242,7 +244,7 @@ class Video:
         height, width, _ = frame.shape
         # To create a video:
         vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
-        videoWriter = cv2.VideoWriter(str(videoFramesDir_pathObj / 'videoBubbleTrajectory_numBubbles{:03d}.mp4'.format(len(bubbleListIndices))), vidCodec, fps, (width, height))
+        videoWriter = cv2.VideoWriter(str(videoFramesDir_pathObj.parent / 'videoBubbleTrajectory_numBubbles{:03d}.mp4'.format(len(bubbleListIndices))), vidCodec, fps, (width, height))
         for frameInd in tqdm(range(self.getNumFrames()), desc='Creating video'):
             frameNum = self.getFrame(frameInd).getFrameNumber()
             frameName = frameNameTemplate.format(frameNum)
@@ -250,14 +252,16 @@ class Video:
                 frame = cv2.imread(str(videoFramesDir_pathObj / frameName))
             else:
                 frame = cv2.imread(str(binaryFrameDir_pathObj / frameName))
+            # Write frameNum in the frame in top right corner in black use small font
+            cv2.putText(frame, str(frameNum), (frame.shape[1] - 30, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.25, (0, 0, 0), 1, cv2.LINE_AA)
             videoWriter.write(frame)
         videoWriter.release()
         
         # Delete the frames in videoFramesDir_pathObj
-        frameCountInVidDir = len(list(videoFramesDir_pathObj.glob('*.png')))
-        if frameCountInVidDir > 0:
-            for frameName in videoFramesDir_pathObj.glob('*.png'):
-                frameName.unlink()
+        # frameCountInVidDir = len(list(videoFramesDir_pathObj.glob('*.png')))
+        # if frameCountInVidDir > 0:
+        #     for frameName in videoFramesDir_pathObj.glob('*.png'):
+        #         frameName.unlink()
     
     def plotTrajectory(self, bubbleListIndex, binaryFrameDir_pathObj, videoDir_pathObj, fps, frameNameTemplate):
         """ 
@@ -265,7 +269,7 @@ class Video:
         """
         bubble = self.bubbles[bubbleListIndex]
         trajectory = bubble.getFullTrajectory()
-        position, size, rows, cols = self.getPositionAndSizeArrayFromTrajectory(trajectory)
+        position, size = self.getPositionAndSizeArrayFromTrajectory(trajectory)
         
         _, videoWidth, videoHeight = self.plotTrajectory_subFunc(position[0], size[0], trajectory[0][0], frameNameTemplate, binaryFrameDir_pathObj)
         
