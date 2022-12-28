@@ -185,7 +185,7 @@ class Video:
         # self.bubbles.sort(key=lambda bubble: bubble.getTrajectoryLength(), reverse=True)
         
         # Sort the bubbles by their size (largest to smallest)
-        self.bubbles.sort(key=lambda bubble: self.getBubbleSize(bubble.getLocation(0)), reverse=True)
+        self.bubbles.sort(key=lambda bubble: self.getBubbleSize(bubble.getLatestLocation()), reverse=True)
         
     
     def getPositionAndSizeArrayFromTrajectory(self, trajectory):
@@ -275,9 +275,9 @@ class Video:
         
         # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
         vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')  # codec for .mp4 file
-        videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'videoBubbleTrajectory_Size{:05d}_fnstrt{:05d}_fnend{:05d}.mp4'.format(int(size[0]), trajectory[0][0], trajectory[-1][0])),vidCodec, fps, (videoWidth, videoHeight))
+        videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'videoBubbleTrajectory_Size{:05d}_fnstrt{:05d}_fnend{:05d}.mp4'.format(int(size[-1]), trajectory[0][0], trajectory[-1][0])),vidCodec, fps, (videoWidth, videoHeight))
                
-        for i in tqdm(range(len(trajectory)) , desc='Plotting trajectory for Size = {:04d}'.format(int(size[0]))):
+        for i in tqdm(range(len(trajectory)) , desc='Plotting trajectory for Size = {:04d}'.format(int(size[-1]))):
             # Create plot showing the object position (x, y) with marker size = object size
             videoArray, videoWidth, videoHeight = self.plotTrajectory_subFunc(position[i], size[i], trajectory[i][0], frameNameTemplate, binaryFrameDir_pathObj)
             # Write the combined frame to the video
