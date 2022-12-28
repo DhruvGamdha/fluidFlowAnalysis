@@ -166,6 +166,7 @@ def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTempl
     if newVideo.isSame(video):
         print("Video analysis saved successfully")
     else:
+        print("Video analysis not saved successfully")
         exit()
     return video
     
