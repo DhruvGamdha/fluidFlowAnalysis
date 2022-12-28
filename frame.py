@@ -105,3 +105,15 @@ class Frame:
         for object in self.objects:
             frame.addObject(object)
         return frame
+    
+    def isSame(self, frame):
+        if self.frameNumber != frame.getFrameNumber():
+            return False
+        if self.objCount != frame.getObjectCount():
+            return False
+        if self.objCount != len(frame.getAllObjects()):
+            return False
+        for i in range(self.objCount):
+            if not self.objects[i].isSame(frame.getObject(i)):
+                return False
+        return True

@@ -48,6 +48,12 @@ class Video:
                 saveFile.write('\t' + 'Position: [' + str(obj.getX()) + ' ' + str(obj.getY()) + ']')
                 saveFile.write('\t' + 'Size: ' + str(obj.getSize()))
                 saveFile.write('\n')
+                # write all the pixelLocs of the object to the text file in a single line
+                rows, cols = obj.getAllPixelLocs()
+                saveFile.write('\t')
+                for k in range(len(rows)):
+                    saveFile.write(str(rows[k]) + ' ' + str(cols[k]) + ' ')
+                saveFile.write('\n')
                 
         saveFile.close()
         assert savePath.exists()
@@ -78,9 +84,14 @@ class Video:
                 objIndex = int(lines[lineIndex].split()[3])
                 position = np.array([int(lines[lineIndex].split()[5][1:]), int(lines[lineIndex].split()[6][:-1])])
                 size = int(lines[lineIndex].split()[8])
-                 
+                lineIndex += 1
+                pixelLocs = lines[lineIndex].split()
+                pixelLocs = np.array(pixelLocs[1:-1], dtype=np.int32)
+                pixelLocs = pixelLocs.reshape(-1, 2)
+                rows = pixelLocs[:, 0]
+                cols = pixelLocs[:, 1]
                 # Create a new object and add it to the frame
-                newObject = Object(objFrameNumber, objIndex, position[0], position[1], size)
+                newObject = Object(objFrameNumber, objIndex, position[0], position[1], size, rows, cols)
                 frame.addObject(newObject)
                 
             # Add the frame to the video
@@ -243,3 +254,88 @@ class Video:
         
         plt.close(fig)
         return videoArray, videoWidth, videoHeight
+    
+    def isSame(self, video):
+        if len(self.frames) != len(video.frames):
+            return False
+        
+        for i in range(len(self.frames)):
+            if not self.frames[i].isSame(video.frames[i]):
+                return False
+        return True
+        
+    def getColor(self, n):
+        """ 
+        #000000
+        #00FF00
+        #0000FF
+        #FF0000
+        #01FFFE
+        #FFA6FE
+        #FFDB66
+        #006401
+        #010067
+        #95003A
+        #007DB5
+        #FF00F6
+        #FFEEE8
+        #774D00
+        #90FB92
+        #0076FF
+        #D5FF00
+        #FF937E
+        #6A826C
+        #FF029D
+        #FE8900
+        #7A4782
+        #7E2DD2
+        #85A900
+        #FF0056
+        #A42400
+        #00AE7E
+        #683D3B
+        #BDC6FF
+        #263400
+        #BDD393
+        #00B917
+        #9E008E
+        #001544
+        #C28C9F
+        #FF74A3
+        #01D0FF
+        #004754
+        #E56FFE
+        #788231
+        #0E4CA1
+        #91D0CB
+        #BE9970
+        #968AE8
+        #BB8800
+        #43002C
+        #DEFF74
+        #00FFC6
+        #FFE502
+        #620E00
+        #008F9C
+        #98FF52
+        #7544B1
+        #B500FF
+        #00FF78
+        #FF6E41
+        #005F39
+        #6B6882
+        #5FAD4E
+        #A75740
+        #A5FFD2
+        #FFB167
+        #009BFF
+        #E85EBE 
+        """
+        colorsList = ['#00FF00', '#0000FF', '#FF0000', '#01FFFE', '#FFA6FE', '#FFDB66', '#006401', '#010067', '#95003A', '#007DB5', '#FF00F6', '#FFEEE8', '#774D00', '#90FB92', '#0076FF', '#D5FF00', '#FF937E', '#6A826C', '#FF029D', '#FE8900', '#7A4782', '#7E2DD2', '#85A900', '#FF0056', '#A42400', '#00AE7E', '#683D3B', '#BDC6FF', '#263400', '#BDD393', '#00B917', '#9E008E', '#001544', '#C28C9F', '#FF74A3', '#01D0FF', '#004754', '#E56FFE', '#788231', '#0E4CA1', '#91D0CB', '#BE9970', '#968AE8', '#BB8800', '#43002C', '#DEFF74', '#00FFC6', '#FFE502', '#620E00', '#008F9C', '#98FF52', '#7544B1', '#B500FF', '#00FF78', '#FF6E41', '#005F39', '#6B6882', '#5FAD4E', '#A75740', '#A5FFD2', '#FFB167', '#009BFF', '#E85EBE']
+        
+        if n < len(colorsList):
+            return colorsList[n]
+        else:
+            return '#FFFFFF'
+        
+        

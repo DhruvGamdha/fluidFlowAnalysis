@@ -154,18 +154,19 @@ def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTempl
             y   = imgShape[0] - np.min(rows)
             x   = np.min(cols)
             objInd = objLabel - 1
-            obj = Object(frameNum, objInd, x, y, len(rows))
+            obj = Object(frameNum, objInd, x, y, len(rows), rows, cols)
             frame.addObject(obj)
         
         video.addFrame(frame)
         plotFrameObjectAnalysis(frame, frameNum, count, imgShape, analysisBaseDir_pathObj, frameNameTemplate)
     video.saveToTextFile(analysisBaseDir_pathObj)
     
-    # newVideo = Video()
-    # newVideo.loadFromTextFile(analysisBaseDir_pathObj)
-    # if video == newVideo:
-    #     print("Video analysis saved successfully")      
-    
+    newVideo = Video()
+    newVideo.loadFromTextFile(analysisBaseDir_pathObj)
+    if newVideo.isSame(video):
+        print("Video analysis saved successfully")
+    else:
+        exit()
     return video
     
 def imgSegmentation(binaryFrameDir_pathObj, nameTemplate, frameNum, connectivity):

@@ -2,11 +2,12 @@
 import numpy as np
 
 class Object:
-    def __init__(self, frameNumber, objectIndex, x, y, size):
+    def __init__(self, frameNumber, objectIndex, x, y, size, rows, cols):
         self.frameNumber = frameNumber
         self.objectIndex = objectIndex
-        self.position = np.array([x, y])
+        self.position   = np.array([x, y])
         self.size = size
+        self.pixelLocs = np.array([rows, cols])
     
     def setFrameNumber(self, frameNumber):
         self.frameNumber = frameNumber
@@ -37,3 +38,32 @@ class Object:
     
     def getSize(self):
         return self.size
+    
+    def getPixelLoc(self, index):
+        row = self.pixelLocs[0][index]
+        col = self.pixelLocs[1][index]
+        return row, col
+    
+    def getAllPixelLocs(self):
+        rows = self.pixelLocs[0]
+        cols = self.pixelLocs[1]
+        return rows, cols
+    
+    def isSame(self, object):
+        cond1 = self.frameNumber == object.getFrameNumber()
+        cond2 = self.objectIndex == object.getObjectIndex()
+        cond3 = self.position[0] == object.getX() and self.position[1] == object.getY()
+        cond4 = self.size == object.getSize()
+        
+        # Check if the pixel locations are the same
+        objrow = object.getAllPixelLocs()[0]
+        objcol = object.getAllPixelLocs()[1]
+        for i in range(len(self.pixelLocs[0])):
+            selfrow_i = self.pixelLocs[0][i]
+            selfcol_i = self.pixelLocs[1][i]
+            objrow_i = objrow[i]
+            objcol_i = objcol[i]
+            cond5 = selfrow_i == objrow_i and selfcol_i == objcol_i
+            if not cond5:
+                break
+        return cond1 and cond2 and cond3 and cond4 and cond5
