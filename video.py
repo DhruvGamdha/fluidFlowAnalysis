@@ -194,8 +194,7 @@ class Video:
             obj = self.getObjectFromBubbleLoc(loc)
             position[i, :] = obj.getPosition()
             size[i] = obj.getSize()
-            rows, cols = obj.getAllPixelLocs()
-        return position, size, rows, cols
+        return position, size
     
     def app2_plotTrajectory(self, bubbleListIndices, binaryFrameDir_pathObj, videoFramesDir_pathObj, fps, frameNameTemplate):
         """ 
@@ -222,12 +221,13 @@ class Video:
         for bubbleListIndex in tqdm(bubbleListIndices, desc='Creating frames'):
             bubble = self.bubbles[bubbleListIndex]
             trajectory = bubble.getFullTrajectory()
-            position, size, rows, cols = self.getPositionAndSizeArrayFromTrajectory(trajectory)
             color = self.getColor(colorIndex)
             colorIndex += 1
             for i in range(len(trajectory)):
-                frameNum = trajectory[i][0]
-                frameName = frameNameTemplate.format(frameNum)
+                obj         = self.getObjectFromBubbleLoc(trajectory[i])
+                rows, cols  = obj.getAllPixelLocs()
+                frameNum    = trajectory[i][0]
+                frameName   = frameNameTemplate.format(frameNum)
                 # Check if the frame exists in videoFramesDir_pathObj
                 if (videoFramesDir_pathObj / frameName).exists():
                     frame = cv2.imread(str(videoFramesDir_pathObj / frameName))
