@@ -270,8 +270,8 @@ class Video:
         bubble = self.bubbles[bubbleListIndex]
         trajectory = bubble.getFullTrajectory()
         position, size = self.getPositionAndSizeArrayFromTrajectory(trajectory)
-        
-        _, videoWidth, videoHeight = self.plotTrajectory_subFunc(position[0], size[0], trajectory[0][0], frameNameTemplate, binaryFrameDir_pathObj)
+        color = self.getColor(bubbleListIndex)
+        _, videoWidth, videoHeight = self.plotTrajectory_subFunc(trajectory[0], frameNameTemplate, binaryFrameDir_pathObj, color)
         
         # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
         vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')  # codec for .mp4 file
@@ -279,51 +279,58 @@ class Video:
                
         for i in tqdm(range(len(trajectory)) , desc='Plotting trajectory for Size = {:04d}'.format(int(size[-1]))):
             # Create plot showing the object position (x, y) with marker size = object size
-            videoArray, videoWidth, videoHeight = self.plotTrajectory_subFunc(position[i], size[i], trajectory[i][0], frameNameTemplate, binaryFrameDir_pathObj)
+            videoArray, videoWidth, videoHeight = self.plotTrajectory_subFunc(trajectory[i], frameNameTemplate, binaryFrameDir_pathObj, color)
             # Write the combined frame to the video
             videoWriter.write(videoArray)
              
         videoWriter.release()
         
-    def plotTrajectory_subFunc(self, position, size, frameNumber, frameNameTemplate, binaryFrameDir_pathObj):
+    def plotTrajectory_subFunc(self, trajectory, frameNameTemplate, binaryFrameDir_pathObj, color):
         # Get the binary frame as np array
+        frameNumber = trajectory[0]
         frameName   = frameNameTemplate.format(frameNumber)
         framePath   = binaryFrameDir_pathObj / frameName
         frameArray  = cv2.imread(str(framePath))
         
-        # Set figsize based on the binary frame size
-        sizeReductionFactor = 0.01
-        subtractAmount = 4
-        figsize = (frameArray.shape[0] * sizeReductionFactor - subtractAmount, frameArray.shape[0] * sizeReductionFactor) 
-        fig = plt.figure(figsize=figsize)
-        ax = fig.add_subplot(111)
-        ax.scatter(position[0], position[1], s=size)
-        ax.set_xlim(0, frameArray.shape[1])
-        ax.set_ylim(0, frameArray.shape[0])
-        ax.set_aspect('equal')
-        ax.text(0.05, 0.95, 'fN = {}'.format(frameNumber), horizontalalignment='left', verticalalignment='top', transform=ax.transAxes, fontsize=6)
-        plt.tight_layout()
+        obj         = self.getObjectFromBubbleLoc(trajectory)
+        rows, cols  = obj.getAllPixelLocs()
         
-        # Get plot as np array
-        fig.canvas.draw()
-        plotArray = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-        plotArray = plotArray.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        frameArray[rows, cols, :] = color
+        
+        # # Set figsize based on the binary frame size
+        # sizeReductionFactor = 0.01
+        # subtractAmount = 4
+        # figsize = (frameArray.shape[0] * sizeReductionFactor - subtractAmount, frameArray.shape[0] * sizeReductionFactor) 
+        # fig = plt.figure(figsize=figsize)
+        # ax = fig.add_subplot(111)
+        # ax.scatter(position[0], position[1], s=size)
+        # ax.set_xlim(0, frameArray.shape[1])
+        # ax.set_ylim(0, frameArray.shape[0])
+        # ax.set_aspect('equal')
+        # ax.text(0.05, 0.95, 'fN = {}'.format(frameNumber), horizontalalignment='left', verticalalignment='top', transform=ax.transAxes, fontsize=6)
+        # plt.tight_layout()
+        
+        # # Get plot as np array
+        # fig.canvas.draw()
+        # plotArray = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+        # plotArray = plotArray.reshape(fig.canvas.get_width_height()[::-1] + (3,))
     
-        # Combine the plot and the binary frame
-        videoWidth  = frameArray.shape[1] + plotArray.shape[1]
-        videoHeight = max(frameArray.shape[0], plotArray.shape[0])
-        videoArray  = np.zeros((videoHeight, videoWidth, 3), dtype=np.uint8)
+        # # Combine the plot and the binary frame
+        # videoWidth  = frameArray.shape[1] + plotArray.shape[1]
+        # videoHeight = max(frameArray.shape[0], plotArray.shape[0])
+        # videoArray  = np.zeros((videoHeight, videoWidth, 3), dtype=np.uint8)
         
-        if frameArray.shape[0] < videoHeight: # pad the frameArray
-            frameArray = np.pad(frameArray, ((0, videoHeight - frameArray.shape[0]), (0, 0), (0, 0)), 'constant')
-        if plotArray.shape[0] < videoHeight: # pad the plotArray
-            plotArray = np.pad(plotArray, ((0, videoHeight - plotArray.shape[0]), (0, 0), (0, 0)), 'constant')
+        # if frameArray.shape[0] < videoHeight: # pad the frameArray
+        #     frameArray = np.pad(frameArray, ((0, videoHeight - frameArray.shape[0]), (0, 0), (0, 0)), 'constant')
+        # if plotArray.shape[0] < videoHeight: # pad the plotArray
+        #     plotArray = np.pad(plotArray, ((0, videoHeight - plotArray.shape[0]), (0, 0), (0, 0)), 'constant')
         
-        videoArray[:, :frameArray.shape[1], :] = frameArray
-        videoArray[:, frameArray.shape[1]:, :] = plotArray
+        # videoArray[:, :frameArray.shape[1], :] = frameArray
+        # videoArray[:, frameArray.shape[1]:, :] = plotArray
         
-        plt.close(fig)
-        return videoArray, videoWidth, videoHeight
+        # plt.close(fig)
+        # return videoArray, videoWidth, videoHeight
+        return frameArray, frameArray.shape[1], frameArray.shape[0]
     
     def isSame(self, video):
         if len(self.frames) != len(video.frames):
@@ -402,11 +409,9 @@ class Video:
         #E85EBE 
         """
         colorsList = ['#00FF00', '#0000FF', '#FF0000', '#01FFFE', '#FFA6FE', '#FFDB66', '#006401', '#010067', '#95003A', '#007DB5', '#FF00F6', '#FFEEE8', '#774D00', '#90FB92', '#0076FF', '#D5FF00', '#FF937E', '#6A826C', '#FF029D', '#FE8900', '#7A4782', '#7E2DD2', '#85A900', '#FF0056', '#A42400', '#00AE7E', '#683D3B', '#BDC6FF', '#263400', '#BDD393', '#00B917', '#9E008E', '#001544', '#C28C9F', '#FF74A3', '#01D0FF', '#004754', '#E56FFE', '#788231', '#0E4CA1', '#91D0CB', '#BE9970', '#968AE8', '#BB8800', '#43002C', '#DEFF74', '#00FFC6', '#FFE502', '#620E00', '#008F9C', '#98FF52', '#7544B1', '#B500FF', '#00FF78', '#FF6E41', '#005F39', '#6B6882', '#5FAD4E', '#A75740', '#A5FFD2', '#FFB167', '#009BFF', '#E85EBE']
-        colorHex = '#000000'
-        if n < len(colorsList):
-            colorHex = colorsList[n]
-        else:
-            colorHex = '#000000'
+        
+        val = n % len(colorsList)
+        colorHex = colorsList[val]
         
         # get RGB values from hex using ImageColor.getcolor
         colorRGB = ImageColor.getcolor(colorHex, "RGB")
