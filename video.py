@@ -163,10 +163,14 @@ class Video:
         
         for frameInd in tqdm(range(1, self.getNumFrames()), desc='Tracking objects'):
             frame = self.getFrame(frameInd)
+            iter_frameNum = frame.getFrameNumber()
             frameCopy = frame.copy()
             for listInd in range(len(self.bubbles)):
                 bubble  = self.bubbles[listInd]
                 latestObj = self.getLatestBubbleObject(listInd)
+                objFrameNum = latestObj.getFrameNumber()
+                if objFrameNum != iter_frameNum - 1:    # Check if the latest object is from the previous frame
+                    continue
                 closestObjsInd = frameCopy.getNearbyAndComparableSizeObjectIndices_object(latestObj, distanceThreshold, sizeThreshold)
                 if len(closestObjsInd) > 0:
                     closestObj = frameCopy.getObject(closestObjsInd[0])
@@ -268,6 +272,8 @@ class Video:
         Plot 
         """
         bubble = self.bubbles[bubbleListIndex]
+        if not bubble.isTrajectoryContinuous():
+            exit('Trajectory is not continuous')
         trajectory = bubble.getFullTrajectory()
         position, size = self.getPositionAndSizeArrayFromTrajectory(trajectory)
         color = self.getColor(bubbleListIndex)
@@ -275,7 +281,7 @@ class Video:
         
         # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
         vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')  # codec for .mp4 file
-        videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'videoBubbleTrajectory_Size{:05d}_fnstrt{:05d}_fnend{:05d}.mp4'.format(int(size[-1]), trajectory[0][0], trajectory[-1][0])),vidCodec, fps, (videoWidth, videoHeight))
+        videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'Bub_Sstrt{:05d}_Send{:05d}_fnstrt{:05d}_fnend{:05d}.mp4'.format(int(size[0]), int(size[-1]), trajectory[0][0], trajectory[-1][0])),vidCodec, fps, (videoWidth, videoHeight))
                
         for i in tqdm(range(len(trajectory)) , desc='Plotting trajectory for Size = {:04d}'.format(int(size[-1]))):
             # Create plot showing the object position (x, y) with marker size = object size
@@ -331,6 +337,15 @@ class Video:
         # plt.close(fig)
         # return videoArray, videoWidth, videoHeight
         return frameArray, frameArray.shape[1], frameArray.shape[0]
+    
+    def isVideoContinuous(self):
+        """ 
+        Check if the video is continuous
+        """
+        for i in range(len(self.frames)-1):
+            if self.frames[i+1].frameNumber - self.frames[i].frameNumber != 1:
+                return False
+        return True
     
     def isSame(self, video):
         if len(self.frames) != len(video.frames):

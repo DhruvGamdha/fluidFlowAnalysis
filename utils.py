@@ -159,6 +159,10 @@ def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTempl
         
         video.addFrame(frame)
         plotFrameObjectAnalysis(frame, frameNum, count, imgShape, analysisBaseDir_pathObj, frameNameTemplate)
+    
+    if not video.isVideoContinuous():
+        exit('Video is not continuous. Exiting ...')
+        
     video.saveToTextFile(analysisBaseDir_pathObj)
     
     newVideo = Video()

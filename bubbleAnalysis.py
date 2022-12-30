@@ -77,6 +77,8 @@ class bubbleAnalysis:
             # Testing fluidFlow2 parameters
             para['connectivity'] = 2
             para['minSize']      = 5
+            para['distanceThreshold'] = 10
+            para['sizeThreshold']     = 45
             return para
         
         else:
