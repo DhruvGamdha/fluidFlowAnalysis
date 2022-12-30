@@ -79,6 +79,9 @@ class bubbleAnalysis:
             para['minSize']      = 5
             para['distanceThreshold'] = 10
             para['sizeThreshold']     = 45
+            
+            # Testing closing/Opening parameters
+            para['C_O_KernelSize'] = 5
             return para
         
         else:

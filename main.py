@@ -9,7 +9,7 @@ if __name__ == "__main__":
     inpTemplate   = 'version_{:02d}'
     outpTemplate  = 'version_{:02d}'
     inpTemplateIndex  = 1
-    outpTemplateIndex = 2
+    outpTemplateIndex = -1
     inpDirsToCreate_wrtTemplate = [ 'all/frames',
                                     'set1/frames']
     outpDirsToCreate_wrtTemplate= [ 'binary/all/frames', 

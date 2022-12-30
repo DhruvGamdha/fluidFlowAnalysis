@@ -60,6 +60,14 @@ def processImages(originalFrameDir_pathObj, binaryFrameDir_pathObj, nameTemplate
         invth2          = 255 - th2    
         labelImg, count = skm.label(invth2, connectivity=params["connectivity"], return_num=True)
         
+        # closing
+        kernel          = np.ones((params["C_O_KernelSize"],params["C_O_KernelSize"]),np.uint8)
+        invth2          = cv2.morphologyEx(invth2, cv2.MORPH_CLOSE, kernel)
+        
+        # opening
+        kernel          = np.ones((params["O_C_KernelSize"],params["O_C_KernelSize"]),np.uint8)
+        invth2          = cv2.morphologyEx(invth2, cv2.MORPH_OPEN, kernel)
+        
         for i in range(1, count+1):
             numPixels = np.sum(labelImg == i)
             if numPixels <= params["minSize"]:
