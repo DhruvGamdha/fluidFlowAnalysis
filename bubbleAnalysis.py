@@ -69,8 +69,6 @@ class bubbleAnalysis:
             para['right']        = 200
             para['blockSize']    = 41
             para['constantSub']  = 7
-            
-            # Testing fluidFlow2 parameters
             para['connectivity'] = 2
             para['minSize']      = 5
             para['distanceThreshold'] = 20
