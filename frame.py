@@ -55,30 +55,32 @@ class Frame:
                 objectsIndices.append(i)
         return objectsIndices
     
-    def getComparableSizeObjectIndices_object(self, object, sizeThreshold):
+    def getComparableSizeObjectIndices_object(self, object, sizeThresholdPercent):
         objectsIndices = []
         for i in range(len(self.objects)):
+            sizeThreshold = sizeThresholdPercent * object.getSize()
             if abs(self.objects[i].getSize() - object.getSize()) <= sizeThreshold:
                 objectsIndices.append(i)
         return objectsIndices
     
-    def getComparableSizeObjectIndices_size(self, size, sizeThreshold):
+    def getComparableSizeObjectIndices_size(self, size, sizeThresholdPercent):
         objectsIndices = []
         for i in range(len(self.objects)):
+            sizeThreshold = sizeThresholdPercent * size
             if abs(self.objects[i].getSize() - size) <= sizeThreshold:
                 objectsIndices.append(i)
         return objectsIndices
     
-    def getNearbyAndComparableSizeObjectIndices_object(self, object, distance, sizeThreshold):
+    def getNearbyAndComparableSizeObjectIndices_object(self, object, distance, sizeThresholdPercent):
         nearbyObjectsIndices            = self.getNearbyObjectIndices_object(object, distance)
-        comparableSizeObjectsIndices    = self.getComparableSizeObjectIndices_object(object, sizeThreshold)
+        comparableSizeObjectsIndices    = self.getComparableSizeObjectIndices_object(object, sizeThresholdPercent)
         indices = list(set(nearbyObjectsIndices).intersection(comparableSizeObjectsIndices))
         indices.sort()
         return indices
     
-    def getNearbyAndComparableSizeObjectIndices_positionAndSize(self, position, size, distance, sizeThreshold):
+    def getNearbyAndComparableSizeObjectIndices_positionAndSize(self, position, size, distance, sizeThresholdPercent):
         nearbyObjectsIndices            = self.getNearbyObjectIndices_position(position, distance)
-        comparableSizeObjectsIndices    = self.getComparableSizeObjectIndices_size(size, sizeThreshold)
+        comparableSizeObjectsIndices    = self.getComparableSizeObjectIndices_size(size, sizeThresholdPercent)
         indices = list(set(nearbyObjectsIndices).intersection(comparableSizeObjectsIndices))
         indices.sort()
         return indices
