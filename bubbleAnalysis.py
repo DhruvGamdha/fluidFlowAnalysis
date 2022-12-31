@@ -77,11 +77,11 @@ class bubbleAnalysis:
             # Testing fluidFlow2 parameters
             para['connectivity'] = 2
             para['minSize']      = 5
-            para['distanceThreshold'] = 10
+            para['distanceThreshold'] = 20
             para['sizeThreshold']     = 45
             
             # Testing closing/Opening parameters
-            para['C_O_KernelSize'] = 5
+            para['C_O_KernelSize'] = 4
             return para
         
         else:

@@ -58,15 +58,16 @@ def processImages(originalFrameDir_pathObj, binaryFrameDir_pathObj, nameTemplate
         frame           = cv2.imread(str(originalFrameDir_pathObj/nameTemplate.format(frameNum)), 0)
         th2             = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,    params["blockSize"],    params["constantSub"])
         invth2          = 255 - th2    
-        labelImg, count = skm.label(invth2, connectivity=params["connectivity"], return_num=True)
         
         # closing
         kernel          = np.ones((params["C_O_KernelSize"],params["C_O_KernelSize"]),np.uint8)
         invth2          = cv2.morphologyEx(invth2, cv2.MORPH_CLOSE, kernel)
         
-        # opening
-        kernel          = np.ones((params["O_C_KernelSize"],params["O_C_KernelSize"]),np.uint8)
-        invth2          = cv2.morphologyEx(invth2, cv2.MORPH_OPEN, kernel)
+        # # opening
+        # kernel          = np.ones((params["C_O_KernelSize"],params["C_O_KernelSize"]),np.uint8)
+        # invth2          = cv2.morphologyEx(invth2, cv2.MORPH_OPEN, kernel)
+        
+        labelImg, count = skm.label(invth2, connectivity=params["connectivity"], return_num=True)
         
         for i in range(1, count+1):
             numPixels = np.sum(labelImg == i)
@@ -166,7 +167,7 @@ def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTempl
             frame.addObject(obj)
         
         video.addFrame(frame)
-        plotFrameObjectAnalysis(frame, frameNum, count, imgShape, analysisBaseDir_pathObj, frameNameTemplate)
+        # plotFrameObjectAnalysis(frame, frameNum, count, imgShape, analysisBaseDir_pathObj, frameNameTemplate)
     
     if not video.isVideoContinuous():
         exit('Video is not continuous. Exiting ...')

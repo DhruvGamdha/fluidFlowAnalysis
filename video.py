@@ -149,7 +149,7 @@ class Video:
                 - create a new bubble for the object and add it to the bubble list
         """
         distanceThreshold = params['distanceThreshold']
-        sizeThreshold = params['sizeThreshold']
+        sizeThresholdPercent = params['sizeThresholdPercent']
         bubbleIndex = 0
         frame0      = self.getFrame(0)
         for objInd in range(frame0.getObjectCount()):
@@ -171,7 +171,7 @@ class Video:
                 objFrameNum = latestObj.getFrameNumber()
                 if objFrameNum != iter_frameNum - 1:    # Check if the latest object is from the previous frame
                     continue
-                closestObjsInd = frameCopy.getNearbyAndComparableSizeObjectIndices_object(latestObj, distanceThreshold, sizeThreshold)
+                closestObjsInd = frameCopy.getNearbyAndComparableSizeObjectIndices_object(latestObj, distanceThreshold, sizeThresholdPercent)
                 if len(closestObjsInd) > 0:
                     closestObj = frameCopy.getObject(closestObjsInd[0])
                     bubble.appendTrajectory(frameCopy.getFrameNumber(), closestObj.getObjectIndex())
