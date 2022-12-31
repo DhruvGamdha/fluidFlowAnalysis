@@ -8,7 +8,11 @@ class Object:
         self.position   = np.array([x, y])
         self.size = size
         self.pixelLocs = np.array([rows, cols])
-    
+
+        # Update position to the center of mass
+        x, y = self.getCenterOfMass()
+        self.position = np.array([x, y])
+        
     def setFrameNumber(self, frameNumber):
         self.frameNumber = frameNumber
     
@@ -38,6 +42,16 @@ class Object:
     
     def getSize(self):
         return self.size
+    
+    def getCenterOfMass(self):
+        # Get the pixel locations
+        rows = self.pixelLocs[0]
+        cols = self.pixelLocs[1]
+        
+        # Get the center of mass
+        x = int(round(np.mean(cols)))
+        y = int(round(np.mean(rows)))
+        return x, y
     
     def getPixelLoc(self, index):
         row = self.pixelLocs[0][index]

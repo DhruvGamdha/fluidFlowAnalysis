@@ -41,6 +41,10 @@ class bubbleAnalysis:
         self.analysedVideo.trackObjects(params)
     
     def plotBubbleTrajectory(self, bubbleListIndex, binaryFrameDir_pathObj, videoDir_pathObj):
+        
+        if bubbleListIndex == None:
+            bubbleListIndex = range(self.analysedVideo.getNumBubbles())
+        
         for ind in bubbleListIndex:
             self.analysedVideo.plotTrajectory(ind, binaryFrameDir_pathObj, videoDir_pathObj, self.videoFPS, self.frameNameTemplate)
     
@@ -74,6 +78,12 @@ class bubbleAnalysis:
             para['distanceThreshold'] = 20
             para['C_O_KernelSize'] = 4
             para['sizeThresholdPercent'] = 0.05
+            
+            # Parameter testing
+            para['distanceThreshold'] = 50
+            para['sizeThresholdPercent'] = 0.5
+            para['frameConsecThreshold'] = 7
+            para['bubbleTrajectoryLengthThreshold'] = 5
             return para
         
         else:

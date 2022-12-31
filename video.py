@@ -27,6 +27,9 @@ class Video:
     def getNumFrames(self):
         return len(self.frames)
     
+    def getNumBubbles(self):
+        return len(self.bubbles)
+    
     def saveToTextFile(self, saveDir_pathObj):
         # Create a text file to save the video data
         saveDir_pathObj.mkdir(parents=True, exist_ok=True)
@@ -169,8 +172,11 @@ class Video:
                 bubble  = self.bubbles[listInd]
                 latestObj = self.getLatestBubbleObject(listInd)
                 objFrameNum = latestObj.getFrameNumber()
-                if objFrameNum != iter_frameNum - 1:    # Check if the latest object is from the previous frame
+                # Check frame consecutiveness of the latest object of the bubble using para['frameConsecThreshold']
+                if abs(objFrameNum - iter_frameNum) > params['frameConsecThreshold']:
                     continue
+                # if objFrameNum != iter_frameNum - 1:    # Check if the latest object is from the previous frame
+                #     continue
                 closestObjsInd = frameCopy.getNearbyAndComparableSizeObjectIndices_object(latestObj, distanceThreshold, sizeThresholdPercent)
                 if len(closestObjsInd) > 0:
                     closestObj = frameCopy.getObject(closestObjsInd[0])
@@ -191,6 +197,10 @@ class Video:
         # Sort the bubbles by their size (largest to smallest)
         self.bubbles.sort(key=lambda bubble: self.getBubbleSize(bubble.getLatestLocation()), reverse=True)
         
+        # Remove bubbles with trajectory length less than the threshold, para['bubbleTrajectoryLengthThreshold']
+        self.bubbles = [bubble for bubble in self.bubbles if bubble.getTrajectoryLength() >= params['bubbleTrajectoryLengthThreshold']]
+        
+        print('Number of bubbles: {}'.format(len(self.bubbles)))
     
     def getPositionAndSizeArrayFromTrajectory(self, trajectory):
         position = np.zeros((len(trajectory), 2))
@@ -222,6 +232,10 @@ class Video:
         - Release the video writer object
         - Delete the frames in videoFramesDir_pathObj
         """
+        # check bubbleListIndices is not empty and is a list of integers else set it to all the bubbles
+        if bubbleListIndices is None:
+            bubbleListIndices = list(range(len(self.bubbles)))
+        
         # To create frames:
         colorIndex = 0
         for bubbleListIndex in tqdm(bubbleListIndices, desc='Creating frames'):
@@ -271,9 +285,11 @@ class Video:
         """ 
         Plot 
         """
+        if bubbleListIndex >= len(self.bubbles):
+            return False
         bubble = self.bubbles[bubbleListIndex]
-        if not bubble.isTrajectoryContinuous():
-            exit('Trajectory is not continuous')
+        # if not bubble.isTrajectoryContinuous():
+        #     exit('Trajectory is not continuous')
         trajectory = bubble.getFullTrajectory()
         position, size = self.getPositionAndSizeArrayFromTrajectory(trajectory)
         color = self.getColor(bubbleListIndex)
@@ -290,6 +306,8 @@ class Video:
             videoWriter.write(videoArray)
              
         videoWriter.release()
+        
+        return True
         
     def plotTrajectory_subFunc(self, trajectory, frameNameTemplate, binaryFrameDir_pathObj, color):
         # Get the binary frame as np array

@@ -27,7 +27,7 @@ if __name__ == "__main__":
     frameNameTemplate   = 'frame_{:04d}.png'
     flowType            = 2
     inpVideoFormat      = '.avi'
-    bubbleListIndex     = range(20)
+    bubbleListIndex     = None #range(20)
     analysis            = bubbleAnalysis(videoFPS, frameNameTemplate, flowType, inpVideoFormat)
     
     analysis.getFramesFromVideo(inpDirObj.getDirPathObj('original/frames'))
@@ -40,5 +40,5 @@ if __name__ == "__main__":
     # analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/vertPos/frames'))
     # analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/dynamicMarker/frames'))
     analysis.evaluateBubbleTrajectory()
-    # analysis.plotBubbleTrajectory(bubbleListIndex, outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/bubbleTracking/'))
+    analysis.plotBubbleTrajectory(bubbleListIndex, outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/bubbleTracking/'))
     analysis.app2plotBubbleTrajectory(bubbleListIndex, outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/bubbleTracking/frames'))
