@@ -7,20 +7,11 @@ class directories:
     def __init__(self, baseDirPath, versionDirTemplate, versionDirIndex, dirs_wrtVersionDir):
         self.baseDirPathObj     = pl.Path(baseDirPath)
         self.versionDirTemplate = versionDirTemplate     # template: 'version_{:02d}'
-        self.versionDirIndex    = self.updateTemplateIndex(versionDirIndex)      # Update function to be compatible with pathlib library
+        self.versionDirIndex    = updateTemplateIndex(self.baseDirPathObj, self.versionDirTemplate, versionDirIndex)
         self.versionDirName     = self.versionDirTemplate.format(self.versionDirIndex)
         self.versionDirPathObj  = self.baseDirPathObj / self.versionDirName
         self.pathDict           = dict.fromkeys(dirs_wrtVersionDir)       # Key: directory name, Value: pathlib object of directory
         self.generateDirectories()
-    
-    def updateTemplateIndex(self, versionIndex):
-        if versionIndex <= 0:
-            versionIndex = 0
-            while True:
-                versionIndex += 1
-                if not (self.baseDirPathObj / self.versionDirTemplate.format(versionIndex)).exists():
-                    break
-        return versionIndex
                  
     def generateDirectories(self):
         # Create the version directory
@@ -73,3 +64,12 @@ class directories:
             self.pathDict[key] = self.versionDirPathObj / key
             
         self.pathDict[key].mkdir(parents=True, exist_ok=True)
+        
+def updateTemplateIndex(baseDirPathObj, versionDirTemplate, versionIndex):
+        if versionIndex <= 0:
+            versionIndex = 0
+            while True:
+                versionIndex += 1
+                if not (baseDirPathObj / versionDirTemplate.format(versionIndex)).exists():
+                    break
+        return versionIndex

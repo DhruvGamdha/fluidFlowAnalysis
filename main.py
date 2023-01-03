@@ -1,35 +1,39 @@
 from bubbleAnalysis import bubbleAnalysis
-
+from directories import directories, updateTemplateIndex 
+import libconf
+import git
 # main function
 if __name__ == "__main__":
-    # temp main function
-    from directories import directories
-    inpPth_base   = 'data/fluidFlow2/'
-    outpPth_base  = 'results/fluidFlow2/'
-    inpTemplate   = 'version_{:02d}'
-    outpTemplate  = 'version_{:02d}'
-    inpTemplateIndex  = 1
-    outpTemplateIndex = -1
-    inpDirsToCreate_wrtTemplate = [ 'all/frames',
-                                    'set1/frames']
-    outpDirsToCreate_wrtTemplate= [ 'binary/all/frames', 
-                                    'analysis/pixSize/frames', 
-                                    'analysis/vertPos/frames', 
-                                    'analysis/dynamicMarker/frames',
-                                    'analysis/bubbleTracking/',
-                                    'analysis/bubbleTracking/frames']  
+    
+    para = dict()
+    with open('config.cfg', 'r') as f:
+        para = libconf.load(f)
+    
+    inpPth_base         = para['inpPth_base']
+    outpPth_base        = para['outpPth_base']
+    inpTemplate         = para['inpTemplate']
+    outpTemplate        = para['outpTemplate']
+    inpTemplateIndex    = para['inpTemplateIndex']
+    outpTemplateIndex   = para['outpTemplateIndex']
+    inpDirsToCreate_wrtTemplate = para['inpDirsToCreate_wrtTemplate']
+    outpDirsToCreate_wrtTemplate= para['outpDirsToCreate_wrtTemplate']
     
     inpDirObj = directories(inpPth_base, inpTemplate, inpTemplateIndex, inpDirsToCreate_wrtTemplate) # Create input directories
-    inpDirObj.addDir_usingKey('__base__', 'original/frames')                                    # create original/frames directory wrt base directory
+    inpDirObj.addDir_usingKey(para['additionalDirs'][0], para['additionalDirs'][1])                 # create original/frames directory wrt base directory
     outpDirObj = directories(outpPth_base, outpTemplate, outpTemplateIndex, outpDirsToCreate_wrtTemplate)  # Create output directories
     
-    videoFPS            = 30
-    frameNameTemplate   = 'frame_{:04d}.png'
-    flowType            = 2
-    inpVideoFormat      = '.avi'
-    bubbleListIndex     = None #range(20)
-    analysis            = bubbleAnalysis(videoFPS, frameNameTemplate, flowType, inpVideoFormat)
+    # Get the current git commit hash
+    repo = git.Repo(search_parent_directories=True)
+    sha = repo.head.object.hexsha
+    para['gitCommitHash'] = sha     # Add the git commit hash to the config file
     
+    # Save the config file in the output directory for future reference
+    cfgTempIndex = updateTemplateIndex(outpDirObj.getDirPathObj('__template__'), para['cfgFileTemplate'], -1)
+    with open(outpDirObj.getDirPathObj('__template__') / para['cfgFileTemplate'].format(cfgTempIndex), 'w') as f:
+        libconf.dump(para, f)
+    
+    # Create the analysis object
+    analysis = bubbleAnalysis(para)
     analysis.getFramesFromVideo(inpDirObj.getDirPathObj('original/frames'))
     analysis.getCroppedFrames(inpDirObj.getDirPathObj('original/frames'), inpDirObj.getDirPathObj('all/frames'))
     analysis.getBinaryImages(inpDirObj.getDirPathObj('all/frames'), outpDirObj.getDirPathObj('binary/all/frames'))
@@ -40,5 +44,5 @@ if __name__ == "__main__":
     # analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/vertPos/frames'))
     # analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/dynamicMarker/frames'))
     analysis.evaluateBubbleTrajectory()
-    analysis.plotBubbleTrajectory(bubbleListIndex, outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/bubbleTracking/'))
-    analysis.app2plotBubbleTrajectory(bubbleListIndex, outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/bubbleTracking/frames'))
+    analysis.plotBubbleTrajectory(outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/bubbleTracking/'))
+    analysis.app2plotBubbleTrajectory(outpDirObj.getDirPathObj('binary/all/frames'), outpDirObj.getDirPathObj('analysis/bubbleTracking/frames'))

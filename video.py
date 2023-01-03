@@ -233,7 +233,7 @@ class Video:
         - Delete the frames in videoFramesDir_pathObj
         """
         # check bubbleListIndices is not empty and is a list of integers else set it to all the bubbles
-        if bubbleListIndices is None:
+        if bubbleListIndices is False:
             bubbleListIndices = list(range(len(self.bubbles)))
         
         # To create frames:
