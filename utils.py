@@ -160,10 +160,10 @@ def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTempl
         for objLabel in range(1,count+1):
             rows, cols = np.where(labelImg == objLabel)
             # Get the position (x, y) of the top left bounding box around the bubble, origin at the bottom left corner
-            y   = imgShape[0] - np.min(rows)
-            x   = np.min(cols)
+            topLft_y   = imgShape[0] - np.min(rows)
+            topLft_x   = np.min(cols)
             objInd = objLabel - 1
-            obj = Object(frameNum, objInd, x, y, len(rows), rows, cols)
+            obj = Object(frameNum, objInd, topLft_x, topLft_y, len(rows), rows, cols)
             frame.addObject(obj)
         
         video.addFrame(frame)

@@ -2,16 +2,15 @@
 import numpy as np
 
 class Object:
-    def __init__(self, frameNumber, objectIndex, x, y, size, rows, cols):
+    def __init__(self, frameNumber, objectIndex, topLft_x, topLft_y, size, rows, cols):
         self.frameNumber = frameNumber
         self.objectIndex = objectIndex
-        self.position   = np.array([x, y])
+        self.topLft_position   = np.array([topLft_x, topLft_y])
         self.size = size
         self.pixelLocs = np.array([rows, cols])
 
         # Update position to the center of mass
-        x, y = self.getCenterOfMass()
-        self.position = np.array([x, y])
+        self.position = self.getCenterOfMass()
         
     def setFrameNumber(self, frameNumber):
         self.frameNumber = frameNumber
@@ -51,7 +50,7 @@ class Object:
         # Get the center of mass
         x = int(round(np.mean(cols)))
         y = int(round(np.mean(rows)))
-        return x, y
+        return np.array([x, y])
     
     def getPixelLoc(self, index):
         row = self.pixelLocs[0][index]
