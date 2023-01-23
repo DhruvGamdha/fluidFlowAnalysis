@@ -38,6 +38,9 @@ class bubbleAnalysis:
         self.analysedVideo.trackObjects(self.params)
     
     def plotBubbleTrajectory(self, binaryFrameDir_pathObj, videoDir_pathObj):
+        ''' 
+        Creates separate videos for each bubble
+        '''
         bubbleListIndex     = self.params['bubbleListIndex']
         if self.params['bubbleListIndex'] != False:
             bubbleListIndex = range(self.params['bubbleListIndex'])
@@ -49,6 +52,9 @@ class bubbleAnalysis:
             self.analysedVideo.plotTrajectory(ind, binaryFrameDir_pathObj, videoDir_pathObj, self.videoFPS, self.frameNameTemplate)
     
     def app2plotBubbleTrajectory(self, binaryFrameDir_pathObj, videoFramesDir_pathObj):
+        ''' 
+        Creates a single video with all the bubble marked in it
+        '''
         bubbleListIndices     = self.params['bubbleListIndex']
         if self.params['bubbleListIndex'] != False:
             bubbleListIndices = range(self.params['bubbleListIndex'])
