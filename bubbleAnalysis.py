@@ -31,11 +31,45 @@ class bubbleAnalysis:
         makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, self.frameNameTemplate, videoDir_pathObj, self.videoFPS, self.params)    
     
     def extractFrameObjects(self, binaryFrameDir_pathObj, analysisBaseDir_pathObj):
-        from utils import dropAnalysis
+        from video import Video
+        from utils import dropAnalysis, getFrameNumbers_ordered, DoNumExistingFramesMatch
+        
+        self.analysedVideo = Video()
+        # allFramesNum = getFrameNumbers_ordered(binaryFrameDir_pathObj, self.frameNameTemplate)
+        # condn1      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "pixSize" / "frames" , len(allFramesNum))
+        # condn2      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "vertPos" / "frames" , len(allFramesNum))
+        # condn3      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "dynamicMarker" / "frames" , len(allFramesNum))
+        filePathObj = analysisBaseDir_pathObj / 'videoFrames.txt'
+        condn4      = filePathObj.exists()
+        
+        # if condn1 and condn2 and condn3 and condn4:
+        if condn4:
+            self.analysedVideo.loadFramesFromTextFile(analysisBaseDir_pathObj)
+            return 
+        
         self.analysedVideo = dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, self.frameNameTemplate, self.params)
+        self.analysedVideo.saveFramesToTextFile(analysisBaseDir_pathObj)
+        
     
-    def evaluateBubbleTrajectory(self):
+    def checkVideoFilesOnDisk(self, analysisBaseDir_pathObj):
+        from video import Video
+        newVideo = Video()
+        newVideo.loadFramesFromTextFile(analysisBaseDir_pathObj)
+        newVideo.loadBubblesFromTextFile(analysisBaseDir_pathObj)
+        if newVideo.isSame(self.analysedVideo):
+            print("Video analysis saved successfully")
+        else:
+            print("Video analysis not saved successfully")
+            exit()
+        
+    def evaluateBubbleTrajectory(self, analysisBaseDir_pathObj):
+        filePathObj = analysisBaseDir_pathObj / 'videoBubbles.txt'
+        if filePathObj.exists():
+            self.analysedVideo.loadBubblesFromTextFile(analysisBaseDir_pathObj)
+            return
+        
         self.analysedVideo.trackObjects(self.params)
+        self.analysedVideo.saveBubblesToTextFile(analysisBaseDir_pathObj)
     
     def plotBubbleTrajectory(self, binaryFrameDir_pathObj, videoDir_pathObj):
         ''' 
@@ -51,15 +85,22 @@ class bubbleAnalysis:
         for ind in bubbleListIndex:
             self.analysedVideo.plotTrajectory(ind, binaryFrameDir_pathObj, videoDir_pathObj, self.videoFPS, self.frameNameTemplate)
     
-    def app2plotBubbleTrajectory(self, binaryFrameDir_pathObj, videoFramesDir_pathObj):
+    def markBubblesOnFrames(self, binaryFrameDir_pathObj, bubbleTrackFramesDir_pathObj):
         ''' 
         Creates a single video with all the bubble marked in it
         '''
+        from utils import getFrameNumbers_ordered, DoNumExistingFramesMatch
+        
+        allFramesNum = getFrameNumbers_ordered(binaryFrameDir_pathObj, self.frameNameTemplate)
+        condn1      = DoNumExistingFramesMatch(bubbleTrackFramesDir_pathObj, len(allFramesNum))
+        if condn1:
+            return
+        
         bubbleListIndices     = self.params['bubbleListIndex']
         if self.params['bubbleListIndex'] != False:
             bubbleListIndices = range(self.params['bubbleListIndex'])
              
-        self.analysedVideo.app2_plotTrajectory(bubbleListIndices, binaryFrameDir_pathObj, videoFramesDir_pathObj, self.videoFPS, self.frameNameTemplate)
+        self.analysedVideo.app2_plotTrajectory(bubbleListIndices, binaryFrameDir_pathObj, bubbleTrackFramesDir_pathObj, self.videoFPS, self.frameNameTemplate)
     
     # def flowTypeParams(self, flowType):
     #     para = {}

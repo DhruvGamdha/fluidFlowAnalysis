@@ -30,13 +30,63 @@ class Video:
     def getNumBubbles(self):
         return len(self.bubbles)
     
-    def saveToTextFile(self, saveDir_pathObj):
+    def saveBubblesToTextFile(self, saveDir_pathObj):
         # Create a text file to save the video data
         saveDir_pathObj.mkdir(parents=True, exist_ok=True)
-        savePath = saveDir_pathObj / 'videoAnalysis.txt'
+        savePath = saveDir_pathObj / 'videoBubbles.txt'
         saveFile = open(savePath, 'w')
         
-        # Save the video data
+        # Save the bubble data
+        saveFile.write('Total bubbles: ' + str(self.getNumBubbles()) + '\n')
+        
+        for bubbleInd in range(self.getNumBubbles()):
+            bubble = self.bubbles[bubbleInd]
+            saveFile.write('BubbleIndex: ' + str(bubble.getBubbleIndex())) 
+            saveFile.write('\t' + 'TrajectoryLength: ' + str(bubble.getTrajectoryLength()))
+            saveFile.write('\n')
+            saveFile.write('\t')
+            for j in range(bubble.getTrajectoryLength()):
+                saveFile.write(str(bubble.getLocation(j)[0]) + ' ' + str(bubble.getLocation(j)[1]) + ' ')
+            saveFile.write('\n')
+            
+    def loadBubblesFromTextFile(self, loadDir_pathObj):
+        # Load the video analysis data from the text file
+        loadPath = loadDir_pathObj / 'videoBubbles.txt'
+        loadFile = open(loadPath, 'r')
+        
+        # Read the video data
+        lines = loadFile.readlines()
+        self.bubbles = []
+        
+        # Read the bubble data
+        lineIndex = 0
+        
+        # Read the total number of bubbles
+        numBubbles = int(lines[lineIndex].split()[-1])
+        
+        for i in range(numBubbles):
+            lineIndex += 1
+            bubbleIndex     = int(lines[lineIndex].split()[1])
+            numTrajectory   = int(lines[lineIndex].split()[3])
+            bubble = Bubble(bubbleIndex)
+            lineIndex += 1
+            lineSplit = lines[lineIndex].split()
+            for j in range(numTrajectory):
+                frameNumber = int(lineSplit[2*j])
+                objectIndex = int(lineSplit[2*j+1])
+                bubble.appendTrajectory(frameNumber, objectIndex)
+            self.bubbles.append(bubble)
+        
+        loadFile.close()
+        assert loadPath.exists()
+    
+    def saveFramesToTextFile(self, saveDir_pathObj):
+        # Create a text file to save the video data
+        saveDir_pathObj.mkdir(parents=True, exist_ok=True)
+        savePath = saveDir_pathObj / 'videoFrames.txt'
+        saveFile = open(savePath, 'w')
+        
+        # Save the frames data
         saveFile.write('Total frames: ' + str(self.getNumFrames()) + '\n')
         
         for frameInd in range(self.getNumFrames()):
@@ -62,9 +112,9 @@ class Video:
         saveFile.close()
         assert savePath.exists()
          
-    def loadFromTextFile(self, loadDir_pathObj):
+    def loadFramesFromTextFile(self, loadDir_pathObj):
          # Load the video analysis data from the text file
-        loadPath = loadDir_pathObj / 'videoAnalysis.txt'
+        loadPath = loadDir_pathObj / 'videoFrames.txt'
         loadFile = open(loadPath, 'r')
         
         # Read the video data
@@ -103,13 +153,16 @@ class Video:
             # Add the frame to the video
             self.frames.append(frame)            
         loadFile.close()
-        assert self.checkAnalysisFileExists(loadDir_pathObj)
+        assert self.checkVideoFramesFileExists(loadDir_pathObj)
     
-    def checkAnalysisFileExists(self, loadDir_pathObj):
-        loadPath = loadDir_pathObj / 'videoAnalysis.txt'
-        if loadPath.exists():
-            return True
-        return False
+    def checkVideoFramesFileExists(self, loadDir_pathObj):
+        loadPath = loadDir_pathObj / 'videoFrames.txt'
+        return loadPath.exists()
+        
+    
+    def checkVideoBubblesFileExists(self, loadDir_pathObj):
+        loadPath = loadDir_pathObj / 'videoBubbles.txt'
+        return loadPath.exists()
     
     def getFrameIndexFromNumber(self, frameNumber):
         startFrameNumber = self.frames[0].getFrameNumber()
@@ -361,6 +414,10 @@ class Video:
         
         for i in range(len(self.frames)):
             if not self.frames[i].isSame(video.frames[i]):
+                return False
+        
+        for i in range(len(self.bubbles)):
+            if not self.bubbles[i].isSame(video.bubbles[i]):
                 return False
         return True
         

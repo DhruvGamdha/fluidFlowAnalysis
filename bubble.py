@@ -37,3 +37,8 @@ class Bubble:
             if self.trajectory[i][0] - self.trajectory[i-1][0] != 1:
                 return False
         return True
+    
+    def isSame(self, bubble):
+        cond1 = self.bubbleIndex == bubble.getBubbleIndex()
+        cond2 = self.trajectory == bubble.getFullTrajectory()
+        return cond1 and cond2

@@ -144,13 +144,6 @@ def checkVideoFileExists(videoDir_pathObj, videType):
 def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTemplate, params):
     video       = Video()
     allFramesNum= getFrameNumbers_ordered(binaryFrameDir_pathObj, frameNameTemplate)
-    condn1      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "pixSize" / "frames" , len(allFramesNum))
-    condn2      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "vertPos" / "frames" , len(allFramesNum))
-    condn3      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "dynamicMarker" / "frames" , len(allFramesNum))
-    condn4      = video.checkAnalysisFileExists(analysisBaseDir_pathObj)
-    if condn1 and condn2 and condn3 and condn4:
-        video.loadFromTextFile(analysisBaseDir_pathObj)
-        return video
     connectivity= params["connectivity"]
     for frameNum in tqdm(allFramesNum, desc="Analyzing drops"):
         labelImg, count, imgShape = imgSegmentation(binaryFrameDir_pathObj, frameNameTemplate, frameNum, connectivity)
@@ -172,15 +165,6 @@ def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTempl
     if not video.isVideoContinuous():
         exit('Video is not continuous. Exiting ...')
         
-    video.saveToTextFile(analysisBaseDir_pathObj)
-    
-    newVideo = Video()
-    newVideo.loadFromTextFile(analysisBaseDir_pathObj)
-    if newVideo.isSame(video):
-        print("Video analysis saved successfully")
-    else:
-        print("Video analysis not saved successfully")
-        exit()
     return video
     
 def imgSegmentation(binaryFrameDir_pathObj, nameTemplate, frameNum, connectivity):
