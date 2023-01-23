@@ -190,7 +190,7 @@ def imgSegmentation(binaryFrameDir_pathObj, nameTemplate, frameNum, connectivity
     labelImg, count = skm.label(img, connectivity=connectivity, return_num=True)
     return labelImg, count, imgShape
 
-def getFrameNumbers_ordered(framePathObj, nameTemplate):
+def getFrameNumbers_ordered(framePathObj, nameTemplate, exitOnFail=True):
     allFramePathObj_unorder  = [f for f in framePathObj.iterdir() if (f.is_file() and f.suffix == ".png")]    # Read the binary images
     allFramesNum           = np.zeros(len(allFramePathObj_unorder))  # create numpy array to store the frame numbers
     
@@ -203,7 +203,8 @@ def getFrameNumbers_ordered(framePathObj, nameTemplate):
     # Check if the frame numbers are continuous
     if not np.array_equal(allFramesNum, np.arange(allFramesNum[0], allFramesNum[-1]+1)):
         print("Frame numbers are not continuous")
-        exit()
+        if exitOnFail:
+            exit()
     
     return allFramesNum
 
