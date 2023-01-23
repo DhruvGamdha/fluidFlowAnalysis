@@ -232,6 +232,7 @@ class Video:
         - Release the video writer object
         - Delete the frames in videoFramesDir_pathObj
         """
+        from utils import getFrameNumbers_ordered, DoNumExistingFramesMatch
         # check bubbleListIndices is not empty and is a list of integers else set it to all the bubbles
         if bubbleListIndices is False:
             bubbleListIndices = list(range(len(self.bubbles)))
@@ -254,32 +255,21 @@ class Video:
                 else:
                     frame = cv2.imread(str(binaryFrameDir_pathObj / frameName))
                 frame[rows, cols, :] = color
+                # Write frameNum in the frame in top right corner in black use small font
+                cv2.putText(frame, str(frameNum), (frame.shape[1] - 30, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.25, (0, 0, 0), 1, cv2.LINE_AA)
                 cv2.imwrite(str(videoFramesDir_pathObj / frameName), frame)
         
-        frameNum = self.getFrame(0).getFrameNumber()
-        frameName = frameNameTemplate.format(frameNum)
-        frame = cv2.imread(str(binaryFrameDir_pathObj / frameName))
-        height, width, _ = frame.shape
-        # To create a video:
-        vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
-        videoWriter = cv2.VideoWriter(str(videoFramesDir_pathObj.parent / 'videoBubbleTrajectory_numBubbles{:03d}.mp4'.format(len(bubbleListIndices))), vidCodec, fps, (width, height))
-        for frameInd in tqdm(range(self.getNumFrames()), desc='Creating video'):
-            frameNum = self.getFrame(frameInd).getFrameNumber()
-            frameName = frameNameTemplate.format(frameNum)
-            if (videoFramesDir_pathObj / frameName).exists():
-                frame = cv2.imread(str(videoFramesDir_pathObj / frameName))
-            else:
-                frame = cv2.imread(str(binaryFrameDir_pathObj / frameName))
-            # Write frameNum in the frame in top right corner in black use small font
-            cv2.putText(frame, str(frameNum), (frame.shape[1] - 30, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.25, (0, 0, 0), 1, cv2.LINE_AA)
-            videoWriter.write(frame)
-        videoWriter.release()
+        # Check the number of frames in videoFramesDir_pathObj
+        if DoNumExistingFramesMatch(videoFramesDir_pathObj, self.getNumFrames()):
+            return
         
-        # Delete the frames in videoFramesDir_pathObj
-        # frameCountInVidDir = len(list(videoFramesDir_pathObj.glob('*.png')))
-        # if frameCountInVidDir > 0:
-        #     for frameName in videoFramesDir_pathObj.glob('*.png'):
-        #         frameName.unlink()
+        # Add the missing frames to videoFramesDir_pathObj
+        incompleteFrameNums = getFrameNumbers_ordered(videoFramesDir_pathObj, frameNameTemplate, False)
+        missingFrameNums = list(set(range(self.getNumFrames())) - set(incompleteFrameNums))
+        for missingFrameNum in tqdm(missingFrameNums, desc='Adding missing frames'):
+            frameName = frameNameTemplate.format(missingFrameNum)
+            frame = cv2.imread(str(binaryFrameDir_pathObj / frameName))
+            cv2.imwrite(str(videoFramesDir_pathObj / frameName), frame)
     
     def plotTrajectory(self, bubbleListIndex, binaryFrameDir_pathObj, videoDir_pathObj, fps, frameNameTemplate):
         """ 
