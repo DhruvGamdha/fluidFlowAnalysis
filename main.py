@@ -1,86 +1,166 @@
-from bubbleAnalysis import bubbleAnalysis
-from directories import directories, updateTemplateIndex 
+import sys
+import logging
 import libconf
 import git
-# main function
-if __name__ == "__main__":
-    
-    para = dict()
-    with open('config.cfg', 'r') as f:
+from pathlib import Path
+
+from bubbleAnalysis import BubbleAnalysis
+from directories import directories, updateTemplateIndex
+
+def load_parameters(config_path: str):
+    """
+    Load configuration parameters from the given config file.
+    Exits the program if the file is not found.
+    """
+    cfg_path = Path(config_path)
+    if not cfg_path.exists():
+        print(f"ERROR: Configuration file {config_path} does not exist.")
+        sys.exit(1)
+    with open(cfg_path, 'r') as f:
         para = libconf.load(f)
-    
-    inpPth_base         = para['inpPth_base']
-    outpPth_base        = para['outpPth_base']
-    inpTemplate         = para['inpTemplate']
-    outpTemplate        = para['outpTemplate']
-    inpTemplateIndex    = para['inpTemplateIndex']
-    outpTemplateIndex   = para['outpTemplateIndex']
-    inpDirsToCreate_wrtTemplate = para['inpDirsToCreate_wrtTemplate']
-    outpDirsToCreate_wrtTemplate= para['outpDirsToCreate_wrtTemplate']
-    
-    inpDirObj = directories(inpPth_base, 
-                            inpTemplate, 
-                            inpTemplateIndex, 
-                            inpDirsToCreate_wrtTemplate) # Create input directories
-    
-    inpDirObj.addDir_usingKey(para['additionalDirs'][0], 
-                              para['additionalDirs'][1]) # create original/frames \
-        # directory wrt base directory
-    
-    outpDirObj = directories(outpPth_base, 
-                             outpTemplate, 
-                             outpTemplateIndex, 
-                             outpDirsToCreate_wrtTemplate)  # Create output directories
-    
-    # Get the current git commit hash
-    repo = git.Repo(search_parent_directories=True)
-    sha = repo.head.object.hexsha
-    para['gitCommitHash'] = sha     # Add the git commit hash to the config file
-    
-    # Save the config file in the output directory for future reference
-    cfgTempIndex = updateTemplateIndex(outpDirObj.getDirPathObj('__template__'), 
-                                       para['cfgFileTemplate'], 
-                                       -1)
-    with open(outpDirObj.getDirPathObj('__template__') / para['cfgFileTemplate'].format(cfgTempIndex),'w') as f:
+    return para
+
+def get_git_commit_hash():
+    """
+    Retrieve the current git commit hash of the repository, if available.
+    """
+    try:
+        repo = git.Repo(search_parent_directories=True)
+        return repo.head.object.hexsha
+    except Exception:
+        return None
+
+def save_config(para, outpDirObj):
+    """
+    Save the current configuration dictionary to a new config file in the output template directory.
+    """
+    cfgTempIndex = updateTemplateIndex(
+        outpDirObj.getDirPathObj('__template__'),
+        para['cfgFileTemplate'],
+        -1
+    )
+    config_file_path = outpDirObj.getDirPathObj('__template__') / para['cfgFileTemplate'].format(cfgTempIndex)
+    with open(config_file_path, 'w') as f:
         libconf.dump(para, f)
+    logging.info(f"Configuration saved to {config_file_path}")
+
+def configure_logging(outpDirObj):
+    """
+    Configure logging to output both to console and a file in the output directory.
+    """
+    log_file_path = outpDirObj.getDirPathObj('__template__') / "analysis.log"
     
-    # Create the analysis object
-    analysis = bubbleAnalysis(para)
+    # Clear any existing handlers
+    logging.getLogger().handlers = []
+    
+    # Set logger level
+    logging.getLogger().setLevel(logging.INFO)
+    
+    # Formatter
+    formatter = logging.Formatter('%(asctime)s %(levelname)s:%(message)s')
+    
+    # File handler
+    file_handler = logging.FileHandler(log_file_path)
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.INFO)
+    
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(logging.INFO)
+    
+    # Add handlers
+    logging.getLogger().addHandler(file_handler)
+    logging.getLogger().addHandler(console_handler)
+    
+    logging.info(f"Logging configured. Writing logs to {log_file_path}")
+
+def run_analysis(para):
+    """
+    Execute the full bubble analysis workflow based on the given parameters.
+    """
+
+    # Create input directories
+    inpDirObj = directories(
+        para['inpPth_base'],
+        para['inpTemplate'],
+        para['inpTemplateIndex'],
+        para['inpDirsToCreate_wrtTemplate']
+    )
+
+    # Add additional directories if specified
+    additional_dirs = para.get('additionalDirs', [])
+    if len(additional_dirs) == 2:
+        inpDirObj.addDir_usingKey(additional_dirs[0], additional_dirs[1])
+
+    # Create output directories
+    outpDirObj = directories(
+        para['outpPth_base'],
+        para['outpTemplate'],
+        para['outpTemplateIndex'],
+        para['outpDirsToCreate_wrtTemplate']
+    )
+
+    # Configure logging after output directory is created
+    configure_logging(outpDirObj)
+
+    # Add git commit hash to parameters if available
+    sha = get_git_commit_hash()
+    if sha:
+        para['gitCommitHash'] = sha
+
+    # Save current configuration in output directory
+    save_config(para, outpDirObj)
+
+    # Initialize the analysis object
+    analysis = BubbleAnalysis(para)
+
+    # =========== Analysis Steps ===========
+    logging.info("Starting analysis workflow...")
     analysis.getFramesFromVideo(inpDirObj.getDirPathObj('original/frames'))
-    
-    analysis.getCroppedFrames(inpDirObj.getDirPathObj('original/frames'), 
-                              inpDirObj.getDirPathObj('all/frames'))
+    analysis.getCroppedFrames(inpDirObj.getDirPathObj('original/frames'), inpDirObj.getDirPathObj('all/frames'))
     analysis.createVideoFromFrames(inpDirObj.getDirPathObj('all/frames'))
-    
-    analysis.getBinaryImages(inpDirObj.getDirPathObj('all/frames'),
-                             outpDirObj.getDirPathObj('binary/all/frames'))
-     
+
+    analysis.getBinaryImages(inpDirObj.getDirPathObj('all/frames'), outpDirObj.getDirPathObj('binary/all/frames'))
     analysis.createVideoFromFrames(outpDirObj.getDirPathObj('binary/all/frames'))
-    
-    analysis.createConcatVideo( inpDirObj.getDirPathObj('all/frames'),
-                                outpDirObj.getDirPathObj('binary/all/frames'), 
-                                outpDirObj.getDirPathObj('binary/all/frames').parent)
-    
-    analysis.extractFrameObjects(outpDirObj.getDirPathObj('binary/all/frames'), 
-                                 outpDirObj.getDirPathObj('analysis/pixSize/frames').parents[1])
-    
-    # analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/pixSize/frames'))
-    # analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/vertPos/frames'))
-    # analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/dynamicMarker/frames'))
-    
-    analysis.evaluateBubbleTrajectory(outpDirObj.getDirPathObj('analysis/bubbleTracking/frames').parents[1])
-    
-    analysis.checkVideoFilesOnDisk(outpDirObj.getDirPathObj('analysis/bubbleTracking/frames').parents[1])
-    
-    # analysis.plotBubbleTrajectory(outpDirObj.getDirPathObj('binary/all/frames'), \
-        # outpDirObj.getDirPathObj('analysis/bubbleTracking/'))
-    
-    analysis.markBubblesOnFrames(outpDirObj.getDirPathObj('binary/all/frames'), 
-                                 outpDirObj.getDirPathObj('analysis/bubbleTracking/frames'))
-    
+
+    analysis.createConcatVideo(
+        inpDirObj.getDirPathObj('all/frames'),
+        outpDirObj.getDirPathObj('binary/all/frames'),
+        outpDirObj.getDirPathObj('binary/all/frames').parent
+    )
+
+    analysis.extractFrameObjects(
+        outpDirObj.getDirPathObj('binary/all/frames'),
+        outpDirObj.getDirPathObj('analysis/pixSize/frames').parents[1]
+    )
+
+    analysis.evaluateBubbleTrajectory(
+        outpDirObj.getDirPathObj('analysis/bubbleTracking/frames').parents[1]
+    )
+
+    analysis.checkVideoFilesOnDisk(
+        outpDirObj.getDirPathObj('analysis/bubbleTracking/frames').parents[1]
+    )
+
+    analysis.markBubblesOnFrames(
+        outpDirObj.getDirPathObj('binary/all/frames'),
+        outpDirObj.getDirPathObj('analysis/bubbleTracking/frames')
+    )
+
     analysis.createVideoFromFrames(outpDirObj.getDirPathObj('analysis/bubbleTracking/frames'))
-    
-    analysis.createConcatVideo(inpDirObj.getDirPathObj('all/frames'), 
-                               outpDirObj.getDirPathObj('analysis/bubbleTracking/frames'), 
-                               outpDirObj.getDirPathObj('analysis/bubbleTracking/frames').parent)
-    
+
+    analysis.createConcatVideo(
+        inpDirObj.getDirPathObj('all/frames'),
+        outpDirObj.getDirPathObj('analysis/bubbleTracking/frames'),
+        outpDirObj.getDirPathObj('analysis/bubbleTracking/frames').parent
+    )
+
+    logging.info("Analysis completed successfully.")
+
+def main():
+    para = load_parameters('config.cfg')
+    run_analysis(para)
+
+if __name__ == "__main__":
+    main()
