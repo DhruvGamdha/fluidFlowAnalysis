@@ -139,6 +139,10 @@ def run_analysis(para):
     analysis.evaluateBubbleTrajectory(
         outpDirObj.getDirPathObj('analysis/bubbleTracking/frames').parents[1]
     )
+    
+    analysis.plotBubbleKinematics(
+        outpDirObj.getDirPathObj('analysis/bubbleTracking/kinematics')
+    )
 
     analysis.checkVideoFilesOnDisk(
         outpDirObj.getDirPathObj('analysis/bubbleTracking/frames').parents[1]

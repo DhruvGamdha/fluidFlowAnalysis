@@ -116,6 +116,14 @@ class BubbleAnalysis:
 
         for ind in bubbleListIndex:
             self.analysedVideo.plotTrajectory(ind, binaryFrameDir_pathObj, videoDir_pathObj, self.saveVideoFPS, self.frameNameTemplate)
+            
+    def plotBubbleKinematics(self, videoDir_pathObj: Path):
+        """
+        Plot bubble kinematics for each bubble.
+        """
+        logging.info("Plotting bubble kinematics...")
+        for i in range(self.analysedVideo.getNumBubbles()):
+            self.analysedVideo.plotBubbleKinematics(i, outDir_pathObj=videoDir_pathObj)
 
     def markBubblesOnFrames(self, binaryFrameDir_pathObj: Path, bubbleTrackFramesDir_pathObj: Path):
         """

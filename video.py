@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from PIL import ImageColor
 from pathlib import Path
+import json
 
 from object import Object
 from frame import Frame
@@ -46,139 +47,167 @@ class Video:
 
     def getNumBubbles(self):
         return len(self.bubbles)
-
+    
     def saveBubblesToTextFile(self, saveDir_pathObj):
         """
-        Save bubble trajectory data to a text file.
+        Save bubble data to a JSON file.
         """
         saveDir_pathObj.mkdir(parents=True, exist_ok=True)
-        savePath = saveDir_pathObj / 'videoBubbles.txt'
-        with open(savePath, 'w') as saveFile:
-            saveFile.write('Total bubbles: ' + str(self.getNumBubbles()) + '\n')
-            for bubbleInd, bubble in enumerate(self.bubbles):
-                saveFile.write('BubbleIndex: ' + str(bubble.getBubbleIndex()))
-                saveFile.write('\t' + 'TrajectoryLength: ' + str(bubble.getTrajectoryLength()) + '\n\t')
-                for j in range(bubble.getTrajectoryLength()):
-                    loc = bubble.getLocation(j)
-                    saveFile.write(str(loc[0]) + ' ' + str(loc[1]) + ' ')
-                saveFile.write('\n')
+        savePath = saveDir_pathObj / 'videoBubbles.json'
+        
+        data = {
+            "numBubbles": self.getNumBubbles(),
+            "bubbles": []
+        }
 
-        logging.info("Bubbles saved to %s", savePath)
+        for bubble in self.bubbles:
+            bubbleData = {
+                "bubbleIndex": bubble.getBubbleIndex(),
+                "trajectory": bubble.getFullTrajectory(),
+                "velocities": bubble.velocities.tolist() if bubble.velocities is not None and bubble.velocities.size > 0 else [],
+                "accelerations": bubble.accelerations.tolist() if bubble.accelerations is not None and bubble.accelerations.size > 0 else []
+            }
+            data["bubbles"].append(bubbleData)
+            
+        # Convert all data to native Python types
+        data = convert_to_builtin_types(data)
 
+        with open(savePath, 'w') as f:
+            json.dump(data, f, indent=4)
+
+        logging.info("Bubbles saved to %s in JSON format.", savePath)
+    
     def loadBubblesFromTextFile(self, loadDir_pathObj):
         """
-        Load bubble trajectory data from a text file.
+        Load bubble data (including trajectory, velocities, and accelerations) from a JSON file.
         """
-        loadPath = loadDir_pathObj / 'videoBubbles.txt'
+        loadPath = loadDir_pathObj / 'videoBubbles.json'
         if not loadPath.exists():
             logging.error("Bubbles file not found at %s", loadPath)
             return
-        with open(loadPath, 'r') as loadFile:
-            lines = loadFile.readlines()
-        
+
+        with open(loadPath, 'r') as f:
+            data = json.load(f)
+
+        # Convert data to native Python types
+        data = convert_to_builtin_types(data)
+
+        numBubbles = data.get("numBubbles", 0)
+        bubblesList = data.get("bubbles", [])
+
         self.bubbles = []
-        lineIndex = 0
-        try:
-            numBubbles = int(lines[lineIndex].split()[-1])
-        except (IndexError, ValueError):
-            logging.error("Invalid bubble file format.")
-            return
-        
-        for _ in range(numBubbles):
-            lineIndex += 1
-            lineSplit = lines[lineIndex].split()
-            bubbleIndex = int(lineSplit[1])
-            numTrajectory = int(lineSplit[3])
+        for bubbleInfo in bubblesList:
+            bubbleIndex = bubbleInfo["bubbleIndex"]
+            trajectory = bubbleInfo["trajectory"]
+            velocities = bubbleInfo.get("velocities", [])
+            accelerations = bubbleInfo.get("accelerations", [])
+
             bubble = Bubble(bubbleIndex)
-            lineIndex += 1
-            lineSplit = lines[lineIndex].split()
-            for j in range(numTrajectory):
-                frameNumber = int(lineSplit[2*j])
-                objectIndex = int(lineSplit[2*j+1])
+
+            # Add trajectory data
+            for frameNumber, objectIndex in trajectory:
                 bubble.appendTrajectory(frameNumber, objectIndex)
+
+            # Convert velocities and accelerations back to numpy arrays
+            bubble.velocities = np.array(velocities) if velocities else np.array([])
+            bubble.accelerations = np.array(accelerations) if accelerations else np.array([])
+
             self.bubbles.append(bubble)
 
-        logging.info("Loaded %d bubbles from %s", numBubbles, loadPath)
+        logging.info("Loaded %d bubbles from %s (JSON format).", numBubbles, loadPath)
+    
 
     def saveFramesToTextFile(self, saveDir_pathObj):
         """
-        Save frames data (including objects) to a text file.
+        Save frames data (including objects) to a JSON file.
         """
         saveDir_pathObj.mkdir(parents=True, exist_ok=True)
-        savePath = saveDir_pathObj / 'videoFrames.txt'
-        with open(savePath, 'w') as saveFile:
-            saveFile.write('Total frames: ' + str(self.getNumFrames()) + '\n')
-            for frameInd, frame in enumerate(self.frames):
-                saveFile.write('FrameNumber: ' + str(frame.getFrameNumber()))
-                saveFile.write('\t' + 'TotalObjects: ' + str(frame.getObjectCount()) + '\n')
-                for objInd in range(frame.getObjectCount()):
-                    obj = frame.getObject(objInd)
-                    saveFile.write('\tFrameNumber: ' + str(obj.getFrameNumber()))
-                    saveFile.write('\tObjectIndex: ' + str(obj.getObjectIndex()))
-                    saveFile.write('\tPosition: [' + str(obj.getX()) + ' ' + str(obj.getY()) + ']')
-                    saveFile.write('\tSize: ' + str(obj.getSize()) + '\n')
+        savePath = saveDir_pathObj / 'videoFrames.json'
+        
+        data = {
+            "numFrames": self.getNumFrames(),
+            "frames": []
+        }
 
-                    # Pixel locations
-                    rows, cols = obj.getAllPixelLocs()
-                    saveFile.write('\t')
-                    for k in range(len(rows)):
-                        saveFile.write(str(rows[k]) + ' ' + str(cols[k]) + ' ')
-                    saveFile.write('\n')
+        # Construct the data structure
+        for frame in self.frames:
+            frameData = {
+                "frameNumber": frame.getFrameNumber(),
+                "numObjects": frame.getObjectCount(),
+                "objects": []
+            }
+            for objInd in range(frame.getObjectCount()):
+                obj = frame.getObject(objInd)
+                rows, cols = obj.getAllPixelLocs()
+                objData = {
+                    "frameNumber": obj.getFrameNumber(),
+                    "objectIndex": obj.getObjectIndex(),
+                    # Position: previously saved as "[x y]". Now we store as a list [x, y].
+                    "position": [obj.getX(), obj.getY()],
+                    "size": obj.getSize(),
+                    "rows": rows.tolist() if isinstance(rows, np.ndarray) else list(rows),
+                    "cols": cols.tolist() if isinstance(cols, np.ndarray) else list(cols)
+                }
+                frameData["objects"].append(objData)
+            
+            data["frames"].append(frameData)
 
-        logging.info("Frames saved to %s", savePath)
+        # Convert to Python built-in types before serialization
+        data = convert_to_builtin_types(data)
+
+        with open(savePath, 'w') as f:
+            json.dump(data, f, indent=4)
+
+        logging.info("Frames saved to %s in JSON format.", savePath)
 
     def loadFramesFromTextFile(self, loadDir_pathObj):
         """
-        Load frames data (including objects) from a text file.
+        Load frames data (including objects) from a JSON file.
         """
-        loadPath = loadDir_pathObj / 'videoFrames.txt'
+        loadPath = loadDir_pathObj / 'videoFrames.json'
         if not loadPath.exists():
             logging.error("Frames file not found at %s", loadPath)
             return
-        with open(loadPath, 'r') as loadFile:
-            lines = loadFile.readlines()
+
+        with open(loadPath, 'r') as f:
+            data = json.load(f)
+
+        # Convert to built-in types if needed (though json.load should already return them)
+        data = convert_to_builtin_types(data)
+
+        numFrames = data.get("numFrames", 0)
+        framesList = data.get("frames", [])
 
         self.frames = []
-        lineIndex = 0
-        try:
-            totalFrames = int(lines[lineIndex].split()[2])
-        except (IndexError, ValueError):
-            logging.error("Invalid frame file format.")
-            return
-        
-        for _ in range(totalFrames):
-            lineIndex += 1
+        for frameInfo in framesList:
+            frameNumber = frameInfo["frameNumber"]
+            objectCount = frameInfo["numObjects"]
             frame = Frame()
-            frameNumber = int(lines[lineIndex].split()[1])
-            objectCount = int(lines[lineIndex].split()[3])
             frame.setFrameNumber(frameNumber)
             frame.setObjectCount(objectCount)
-            for __ in range(objectCount):
-                lineIndex += 1
-                lineSplit = lines[lineIndex].split()
-                objFrameNumber = int(lineSplit[1])
-                objIndex = int(lineSplit[3])
-                posX = int(lineSplit[5][1:])
-                posY = int(lineSplit[6][:-1])
-                size = int(lineSplit[8])
 
-                lineIndex += 1
-                pixelLocs = lines[lineIndex].split()
-                rows = []
-                cols = []
-                for k in range(size):
-                    rows.append(int(pixelLocs[2*k]))
-                    cols.append(int(pixelLocs[2*k+1]))
+            for objInfo in frameInfo["objects"]:
+                objFrameNumber = objInfo["frameNumber"]
+                objIndex = objInfo["objectIndex"]
+                posX, posY = objInfo["position"]  # previously from Position: [x y]
+                size = objInfo["size"]
+                rows = objInfo["rows"]
+                cols = objInfo["cols"]
 
+                # Create the object
+                # Note: The Object constructor takes (frameNumber, objectIndex, topLft_x, topLft_y, size, rows, cols).
+                # Here we pass posX, posY as top-left coordinates (as the old code did).
+                # The object will recalculate the center of mass internally from the pixel locations.
                 newObject = Object(objFrameNumber, objIndex, posX, posY, size, rows, cols)
                 frame.addObject(newObject)
             
             self.frames.append(frame)
-        
-        if not self.checkVideoFramesFileExists(loadDir_pathObj):
-            logging.warning("videoFrames.txt found but integrity check failed.")
+
+        # Optional integrity check
+        if numFrames != self.getNumFrames():
+            logging.warning("Number of frames in JSON does not match parsed frames.")
         else:
-            logging.info("Loaded %d frames from %s", totalFrames, loadPath)
+            logging.info("Loaded %d frames from %s (JSON format).", numFrames, loadPath)
 
     def checkVideoFramesFileExists(self, loadDir_pathObj):
         return (loadDir_pathObj / 'videoFrames.txt').exists()
@@ -221,11 +250,14 @@ class Video:
         params : dict
             Dictionary containing parameters like:
               'distanceThreshold', 'sizeThresholdPercent', 'frameConsecThreshold', 'bubbleTrajectoryLengthThreshold'.
+        
+        After tracking objects, also compute velocity and acceleration for each bubble.
         """
         distanceThreshold = params['distanceThreshold']
         sizeThresholdPercent = params['sizeThresholdPercent']
         bubbleIndex = 0
         frame0 = self.getFrame(0)
+        fps = params['frameTimeStep']  # Ensure this is defined in params
 
         # Initialize bubbles from frame 0
         for objInd in range(frame0.getObjectCount()):
@@ -265,11 +297,16 @@ class Video:
                 newBubble.appendTrajectory(frameNum, obj.getObjectIndex())
                 self.bubbles.append(newBubble)
 
-        # Sort bubbles by size and remove short trajectories
+        # Sort bubbles by size and filter them based on trajectory length threshold
         self.bubbles.sort(key=lambda b: self.getBubbleSize(b.getLatestLocation()), reverse=True)
         self.bubbles = [b for b in self.bubbles if b.getTrajectoryLength() >= params['bubbleTrajectoryLengthThreshold']]
 
+        # Compute velocities and accelerations for each bubble
+        for bubble in self.bubbles:
+            bubble.computeVelocitiesAndAccelerations(self, fps)
+
         logging.info("Tracking completed. Number of bubbles: %d", len(self.bubbles))
+
 
     def getPositionAndSizeArrayFromTrajectory(self, trajectory):
         """
@@ -382,6 +419,100 @@ class Video:
         frameArray[rows, cols, :] = color
 
         return frameArray, frameArray.shape[1], frameArray.shape[0]
+    
+    def plotBubbleKinematics(self, bubbleIndex, outDir_pathObj):
+        """
+        Plot the position, velocity, and acceleration of a given bubble and save the plot.
+        
+        Parameters
+        ----------
+        bubbleIndex : int
+            The index of the bubble in self.bubbles to plot.
+        outDir_pathObj : pathlib.Path
+            Directory to save the plot.
+        """
+        if bubbleIndex < 0 or bubbleIndex >= self.getNumBubbles():
+            logging.error("Invalid bubble index %d", bubbleIndex)
+            return
+        
+        bubble = self.bubbles[bubbleIndex]
+        trajectory = bubble.getFullTrajectory()
+
+        if len(trajectory) == 0:
+            logging.warning("Bubble %d has no trajectory to plot.", bubbleIndex)
+            return
+
+        # Extract frame numbers and positions
+        position, _ = self.getPositionAndSizeArrayFromTrajectory(trajectory)
+        frameNumbers = [loc[0] for loc in trajectory]
+
+        # position is Nx2 (x,y)
+        x = position[:, 0]
+        y = position[:, 1]
+
+        # Velocities: (N-1)x2 if present
+        vx, vy = None, None
+        if bubble.velocities is not None and bubble.velocities.size > 0:
+            vx = bubble.velocities[:, 0]
+            vy = bubble.velocities[:, 1]
+            # velocity is defined between frames, we can associate them with frames[1:]
+            velFrames = frameNumbers[1:]
+        else:
+            velFrames = []
+
+        # Accelerations: (N-2)x2 if present
+        ax, ay = None, None
+        if bubble.accelerations is not None and bubble.accelerations.size > 0:
+            ax = bubble.accelerations[:, 0]
+            ay = bubble.accelerations[:, 1]
+            # acceleration is defined between velocity points, so frames[2:]
+            accFrames = frameNumbers[2:]
+        else:
+            accFrames = []
+
+        # Create figure and axes
+        fig, axs = plt.subplots(3, 1, figsize=(10, 12))
+        fig.suptitle(f"Bubble {bubble.getBubbleIndex()} Kinematics", fontsize=16)
+
+        # Plot Position
+        axs[0].plot(frameNumbers, x, label='X position')
+        axs[0].plot(frameNumbers, y, label='Y position')
+        axs[0].set_xlabel('Frame Number')
+        axs[0].set_ylabel('Position (pixels)')
+        axs[0].legend()
+        axs[0].grid(True)
+
+        # Plot Velocity if available
+        if vx is not None and vy is not None:
+            axs[1].plot(velFrames, vx, label='Vx')
+            axs[1].plot(velFrames, vy, label='Vy')
+            axs[1].set_xlabel('Frame Number')
+            axs[1].set_ylabel('Velocity (pixels/s)')
+            axs[1].legend()
+            axs[1].grid(True)
+        else:
+            axs[1].text(0.5, 0.5, 'No velocities available', horizontalalignment='center', verticalalignment='center', transform=axs[1].transAxes)
+            axs[1].set_axis_off()
+
+        # Plot Acceleration if available
+        if ax is not None and ay is not None:
+            axs[2].plot(accFrames, ax, label='Ax')
+            axs[2].plot(accFrames, ay, label='Ay')
+            axs[2].set_xlabel('Frame Number')
+            axs[2].set_ylabel('Acceleration (pixels/s²)')
+            axs[2].legend()
+            axs[2].grid(True)
+        else:
+            axs[2].text(0.5, 0.5, 'No accelerations available', horizontalalignment='center', verticalalignment='center', transform=axs[2].transAxes)
+            axs[2].set_axis_off()
+
+        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+        outDir_pathObj.mkdir(parents=True, exist_ok=True)
+        plotPath = outDir_pathObj / f"bubble_{bubble.getBubbleIndex()}_kinematics.png"
+        plt.savefig(str(plotPath), dpi=300)
+        logging.info("Kinematics plot saved at %s", plotPath)
+        plt.close(fig)
 
     def isVideoContinuous(self):
         """
@@ -428,3 +559,31 @@ class Video:
         colorHex = colorsList[val]
         colorRGB = ImageColor.getcolor(colorHex, "RGB")
         return colorRGB
+
+
+def convert_to_builtin_types(obj):
+    """
+    Recursively convert NumPy data types within a data structure to native Python types.
+    
+    Parameters
+    ----------
+    obj : Any
+        The input data structure containing possible NumPy types.
+        
+    Returns
+    -------
+    Any
+        The converted data structure with native Python types.
+    """
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, list):
+        return [convert_to_builtin_types(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {key: convert_to_builtin_types(value) for key, value in obj.items()}
+    else:
+        return obj
