@@ -1,73 +1,94 @@
 import numpy as np
-import pathlib as pl
-from object import Object
-from frame import Frame
-from bubble import Bubble
+import logging
 import cv2
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from PIL import ImageColor
+from pathlib import Path
+
+from object import Object
+from frame import Frame
+from bubble import Bubble
+
 class Video:
+    """
+    A class representing a video composed of frames and bubbles.
+
+    Attributes
+    ----------
+    frames : list of Frame
+        A list containing frames in order.
+    bubbles : list of Bubble
+        A list containing bubble objects.
+    """
+
     def __init__(self):
-        self.frames = []                # All Frames object orderly placed in a list 
-        self.bubbles = []               # All Bubble placed in a list
-        
+        self.frames = []
+        self.bubbles = []
+
     def addFrame(self, frame):
+        """
+        Add a Frame object to the video.
+        """
         self.frames.append(frame)
-        
+
     def getFrame(self, frameIndex):
         return self.frames[frameIndex]
-    
+
     def getFrames(self, frameIndices):
         return [self.frames[i] for i in frameIndices]
-    
+
     def getAllFrames(self):
         return self.frames
-    
+
     def getNumFrames(self):
         return len(self.frames)
-    
+
     def getNumBubbles(self):
         return len(self.bubbles)
-    
+
     def saveBubblesToTextFile(self, saveDir_pathObj):
-        # Create a text file to save the video data
+        """
+        Save bubble trajectory data to a text file.
+        """
         saveDir_pathObj.mkdir(parents=True, exist_ok=True)
         savePath = saveDir_pathObj / 'videoBubbles.txt'
-        saveFile = open(savePath, 'w')
-        
-        # Save the bubble data
-        saveFile.write('Total bubbles: ' + str(self.getNumBubbles()) + '\n')
-        
-        for bubbleInd in range(self.getNumBubbles()):
-            bubble = self.bubbles[bubbleInd]
-            saveFile.write('BubbleIndex: ' + str(bubble.getBubbleIndex())) 
-            saveFile.write('\t' + 'TrajectoryLength: ' + str(bubble.getTrajectoryLength()))
-            saveFile.write('\n')
-            saveFile.write('\t')
-            for j in range(bubble.getTrajectoryLength()):
-                saveFile.write(str(bubble.getLocation(j)[0]) + ' ' + str(bubble.getLocation(j)[1]) + ' ')
-            saveFile.write('\n')
-            
+        with open(savePath, 'w') as saveFile:
+            saveFile.write('Total bubbles: ' + str(self.getNumBubbles()) + '\n')
+            for bubbleInd, bubble in enumerate(self.bubbles):
+                saveFile.write('BubbleIndex: ' + str(bubble.getBubbleIndex()))
+                saveFile.write('\t' + 'TrajectoryLength: ' + str(bubble.getTrajectoryLength()) + '\n\t')
+                for j in range(bubble.getTrajectoryLength()):
+                    loc = bubble.getLocation(j)
+                    saveFile.write(str(loc[0]) + ' ' + str(loc[1]) + ' ')
+                saveFile.write('\n')
+
+        logging.info("Bubbles saved to %s", savePath)
+
     def loadBubblesFromTextFile(self, loadDir_pathObj):
-        # Load the video analysis data from the text file
+        """
+        Load bubble trajectory data from a text file.
+        """
         loadPath = loadDir_pathObj / 'videoBubbles.txt'
-        loadFile = open(loadPath, 'r')
+        if not loadPath.exists():
+            logging.error("Bubbles file not found at %s", loadPath)
+            return
+        with open(loadPath, 'r') as loadFile:
+            lines = loadFile.readlines()
         
-        # Read the video data
-        lines = loadFile.readlines()
         self.bubbles = []
-        
-        # Read the bubble data
         lineIndex = 0
+        try:
+            numBubbles = int(lines[lineIndex].split()[-1])
+        except (IndexError, ValueError):
+            logging.error("Invalid bubble file format.")
+            return
         
-        # Read the total number of bubbles
-        numBubbles = int(lines[lineIndex].split()[-1])
-        
-        for i in range(numBubbles):
+        for _ in range(numBubbles):
             lineIndex += 1
-            bubbleIndex     = int(lines[lineIndex].split()[1])
-            numTrajectory   = int(lines[lineIndex].split()[3])
+            lineSplit = lines[lineIndex].split()
+            bubbleIndex = int(lineSplit[1])
+            numTrajectory = int(lineSplit[3])
             bubble = Bubble(bubbleIndex)
             lineIndex += 1
             lineSplit = lines[lineIndex].split()
@@ -76,68 +97,71 @@ class Video:
                 objectIndex = int(lineSplit[2*j+1])
                 bubble.appendTrajectory(frameNumber, objectIndex)
             self.bubbles.append(bubble)
-        
-        loadFile.close()
-        assert loadPath.exists()
-    
+
+        logging.info("Loaded %d bubbles from %s", numBubbles, loadPath)
+
     def saveFramesToTextFile(self, saveDir_pathObj):
-        # Create a text file to save the video data
+        """
+        Save frames data (including objects) to a text file.
+        """
         saveDir_pathObj.mkdir(parents=True, exist_ok=True)
         savePath = saveDir_pathObj / 'videoFrames.txt'
-        saveFile = open(savePath, 'w')
-        
-        # Save the frames data
-        saveFile.write('Total frames: ' + str(self.getNumFrames()) + '\n')
-        
-        for frameInd in range(self.getNumFrames()):
-            frame = self.getFrame(frameInd)
-            saveFile.write('FrameNumber: ' + str(frame.getFrameNumber())) 
-            saveFile.write('\t' + 'TotalObjects: ' + str(frame.getObjectCount()))
-            saveFile.write('\n')
-            for j in range(frame.getObjectCount()):
-                obj = frame.getObject(j)
-                
-                saveFile.write('\t' + 'FrameNumber: ' + str(obj.getFrameNumber()))
-                saveFile.write('\t' + 'ObjectIndex: ' + str(obj.getObjectIndex()))
-                saveFile.write('\t' + 'Position: [' + str(obj.getX()) + ' ' + str(obj.getY()) + ']')
-                saveFile.write('\t' + 'Size: ' + str(obj.getSize()))
-                saveFile.write('\n')
-                # write all the pixelLocs of the object to the text file in a single line
-                rows, cols = obj.getAllPixelLocs()
-                saveFile.write('\t')
-                for k in range(len(rows)):
-                    saveFile.write(str(rows[k]) + ' ' + str(cols[k]) + ' ')
-                saveFile.write('\n')
-                
-        saveFile.close()
-        assert savePath.exists()
-         
+        with open(savePath, 'w') as saveFile:
+            saveFile.write('Total frames: ' + str(self.getNumFrames()) + '\n')
+            for frameInd, frame in enumerate(self.frames):
+                saveFile.write('FrameNumber: ' + str(frame.getFrameNumber()))
+                saveFile.write('\t' + 'TotalObjects: ' + str(frame.getObjectCount()) + '\n')
+                for objInd in range(frame.getObjectCount()):
+                    obj = frame.getObject(objInd)
+                    saveFile.write('\tFrameNumber: ' + str(obj.getFrameNumber()))
+                    saveFile.write('\tObjectIndex: ' + str(obj.getObjectIndex()))
+                    saveFile.write('\tPosition: [' + str(obj.getX()) + ' ' + str(obj.getY()) + ']')
+                    saveFile.write('\tSize: ' + str(obj.getSize()) + '\n')
+
+                    # Pixel locations
+                    rows, cols = obj.getAllPixelLocs()
+                    saveFile.write('\t')
+                    for k in range(len(rows)):
+                        saveFile.write(str(rows[k]) + ' ' + str(cols[k]) + ' ')
+                    saveFile.write('\n')
+
+        logging.info("Frames saved to %s", savePath)
+
     def loadFramesFromTextFile(self, loadDir_pathObj):
-         # Load the video analysis data from the text file
+        """
+        Load frames data (including objects) from a text file.
+        """
         loadPath = loadDir_pathObj / 'videoFrames.txt'
-        loadFile = open(loadPath, 'r')
-        
-        # Read the video data
-        lines = loadFile.readlines()
+        if not loadPath.exists():
+            logging.error("Frames file not found at %s", loadPath)
+            return
+        with open(loadPath, 'r') as loadFile:
+            lines = loadFile.readlines()
+
         self.frames = []
-        
         lineIndex = 0
-        totalFrames = int(lines[lineIndex].split()[2])  # Read the total number of frames from the first line
+        try:
+            totalFrames = int(lines[lineIndex].split()[2])
+        except (IndexError, ValueError):
+            logging.error("Invalid frame file format.")
+            return
         
-        # Read the data of each frame
-        for i in range(totalFrames):
+        for _ in range(totalFrames):
             lineIndex += 1
             frame = Frame()
             frameNumber = int(lines[lineIndex].split()[1])
             objectCount = int(lines[lineIndex].split()[3])
             frame.setFrameNumber(frameNumber)
             frame.setObjectCount(objectCount)
-            for j in range(objectCount):
+            for __ in range(objectCount):
                 lineIndex += 1
-                objFrameNumber = int(lines[lineIndex].split()[1])
-                objIndex = int(lines[lineIndex].split()[3])
-                position = np.array([int(lines[lineIndex].split()[5][1:]), int(lines[lineIndex].split()[6][:-1])])
-                size = int(lines[lineIndex].split()[8])
+                lineSplit = lines[lineIndex].split()
+                objFrameNumber = int(lineSplit[1])
+                objIndex = int(lineSplit[3])
+                posX = int(lineSplit[5][1:])
+                posY = int(lineSplit[6][:-1])
+                size = int(lineSplit[8])
+
                 lineIndex += 1
                 pixelLocs = lines[lineIndex].split()
                 rows = []
@@ -145,355 +169,262 @@ class Video:
                 for k in range(size):
                     rows.append(int(pixelLocs[2*k]))
                     cols.append(int(pixelLocs[2*k+1]))
-                
-                # Create a new object and add it to the frame
-                newObject = Object(objFrameNumber, objIndex, position[0], position[1], size, rows, cols)
+
+                newObject = Object(objFrameNumber, objIndex, posX, posY, size, rows, cols)
                 frame.addObject(newObject)
-                
-            # Add the frame to the video
-            self.frames.append(frame)            
-        loadFile.close()
-        assert self.checkVideoFramesFileExists(loadDir_pathObj)
-    
-    def checkVideoFramesFileExists(self, loadDir_pathObj):
-        loadPath = loadDir_pathObj / 'videoFrames.txt'
-        return loadPath.exists()
+            
+            self.frames.append(frame)
         
+        if not self.checkVideoFramesFileExists(loadDir_pathObj):
+            logging.warning("videoFrames.txt found but integrity check failed.")
+        else:
+            logging.info("Loaded %d frames from %s", totalFrames, loadPath)
+
+    def checkVideoFramesFileExists(self, loadDir_pathObj):
+        return (loadDir_pathObj / 'videoFrames.txt').exists()
     
     def checkVideoBubblesFileExists(self, loadDir_pathObj):
-        loadPath = loadDir_pathObj / 'videoBubbles.txt'
-        return loadPath.exists()
-    
+        return (loadDir_pathObj / 'videoBubbles.txt').exists()
+
     def getFrameIndexFromNumber(self, frameNumber):
+        """
+        Convert a frame number to its index based on the first frame number.
+        """
         startFrameNumber = self.frames[0].getFrameNumber()
         frameIndex = frameNumber - startFrameNumber
         return frameIndex
-    
+
     def getObjectFromFrameAndObjectIndex(self, frameIndex, objectIndex):
         return self.frames[frameIndex].getObject(objectIndex)
-    
+
     def getObjectFromBubbleLoc(self, bubbleLocation):
         frameNumber = bubbleLocation[0]
         objectIndex = bubbleLocation[1]
         frameIndex = self.getFrameIndexFromNumber(frameNumber)
         return self.getObjectFromFrameAndObjectIndex(frameIndex, objectIndex)
-    
+
     def getLatestBubbleObject(self, bubbleListIndex):
         bubble = self.bubbles[bubbleListIndex]
         latestLocation = bubble.getLatestLocation()
-        latestObj = self.getObjectFromBubbleLoc(latestLocation)
-        return latestObj
-    
+        return self.getObjectFromBubbleLoc(latestLocation)
+
     def getBubbleSize(self, location):
         obj = self.getObjectFromBubbleLoc(location)
         return obj.getSize()
-        
+
     def trackObjects(self, params):
-        """ 
-        Algorithm:
-        - frame0 = getFrame(0)
-        - create bubble objects for all objects in frame0 and add them to the bubble list
-        - traverse through all frames[1:] and for each frame:
-            - create a copy of the frame
-            - for all bubbles in the bubble list:
-                - get the latest object of the bubble
-                - find the object in the frame that is closest to the latest object (CRITERIA)
-                - if found an object:
-                    - append the object to the bubble
-                    - remove the object from the frame copy
-            - for all the remaining objects in the frame copy:
-                - create a new bubble for the object and add it to the bubble list
+        """
+        Track objects (bubbles) across frames based on criteria like distance and size similarity.
+
+        Parameters
+        ----------
+        params : dict
+            Dictionary containing parameters like:
+              'distanceThreshold', 'sizeThresholdPercent', 'frameConsecThreshold', 'bubbleTrajectoryLengthThreshold'.
         """
         distanceThreshold = params['distanceThreshold']
         sizeThresholdPercent = params['sizeThresholdPercent']
         bubbleIndex = 0
-        frame0      = self.getFrame(0)
+        frame0 = self.getFrame(0)
+
+        # Initialize bubbles from frame 0
         for objInd in range(frame0.getObjectCount()):
-            obj         = frame0.getObject(objInd)
-            frameNum    = frame0.getFrameNumber()
-            objIndex    = obj.getObjectIndex()
-            bubble      = Bubble(bubbleIndex)
+            obj = frame0.getObject(objInd)
+            frameNum = frame0.getFrameNumber()
+            bubble = Bubble(bubbleIndex)
             bubbleIndex += 1
-            bubble.appendTrajectory(frameNum, objIndex)
+            bubble.appendTrajectory(frameNum, obj.getObjectIndex())
             self.bubbles.append(bubble)
-        
+
+        # Track bubbles in subsequent frames
         for frameInd in tqdm(range(1, self.getNumFrames()), desc='Tracking objects'):
             frame = self.getFrame(frameInd)
             iter_frameNum = frame.getFrameNumber()
             frameCopy = frame.copy()
             for listInd in range(len(self.bubbles)):
-                bubble  = self.bubbles[listInd]
+                bubble = self.bubbles[listInd]
                 latestObj = self.getLatestBubbleObject(listInd)
                 objFrameNum = latestObj.getFrameNumber()
-                # Check frame consecutiveness of the latest object of the bubble using para['frameConsecThreshold']
+
+                # Check frame consecutiveness
                 if abs(objFrameNum - iter_frameNum) > params['frameConsecThreshold']:
                     continue
-                # if objFrameNum != iter_frameNum - 1:    # Check if the latest object is from the previous frame
-                #     continue
+
                 closestObjsInd = frameCopy.getNearbyAndComparableSizeObjectIndices_object(latestObj, distanceThreshold, sizeThresholdPercent)
-                if len(closestObjsInd) > 0:
+                if closestObjsInd:
                     closestObj = frameCopy.getObject(closestObjsInd[0])
                     bubble.appendTrajectory(frameCopy.getFrameNumber(), closestObj.getObjectIndex())
                     frameCopy.removeObject_index(closestObjsInd[0])
+
+            # Create new bubbles for remaining objects in frameCopy
             for objInd in range(frameCopy.getObjectCount()):
-                obj         = frameCopy.getObject(objInd)
-                frameNum    = frame.getFrameNumber()
-                objIndex    = obj.getObjectIndex()
-                bubble      = Bubble(bubbleIndex)
+                obj = frameCopy.getObject(objInd)
+                frameNum = frame.getFrameNumber()
+                newBubble = Bubble(bubbleIndex)
                 bubbleIndex += 1
-                bubble.appendTrajectory(frameNum, objIndex)
-                self.bubbles.append(bubble)
-        
-        # Sort the bubbles by their trajectory length
-        # self.bubbles.sort(key=lambda bubble: bubble.getTrajectoryLength(), reverse=True)
-        
-        # Sort the bubbles by their size (largest to smallest)
-        self.bubbles.sort(key=lambda bubble: self.getBubbleSize(bubble.getLatestLocation()), reverse=True)
-        
-        # Remove bubbles with trajectory length less than the threshold, para['bubbleTrajectoryLengthThreshold']
-        self.bubbles = [bubble for bubble in self.bubbles if bubble.getTrajectoryLength() >= params['bubbleTrajectoryLengthThreshold']]
-        
-        print('Number of bubbles: {}'.format(len(self.bubbles)))
-    
+                newBubble.appendTrajectory(frameNum, obj.getObjectIndex())
+                self.bubbles.append(newBubble)
+
+        # Sort bubbles by size and remove short trajectories
+        self.bubbles.sort(key=lambda b: self.getBubbleSize(b.getLatestLocation()), reverse=True)
+        self.bubbles = [b for b in self.bubbles if b.getTrajectoryLength() >= params['bubbleTrajectoryLengthThreshold']]
+
+        logging.info("Tracking completed. Number of bubbles: %d", len(self.bubbles))
+
     def getPositionAndSizeArrayFromTrajectory(self, trajectory):
-        position = np.zeros((len(trajectory), 2))
-        size = np.zeros(len(trajectory))
-        for i in range(len(trajectory)):
-            loc = trajectory[i]
+        """
+        Given a trajectory, return arrays for position (N x 2) and size (N).
+        """
+        position = np.zeros((len(trajectory), 2), dtype=int)
+        size = np.zeros(len(trajectory), dtype=int)
+        for i, loc in enumerate(trajectory):
             obj = self.getObjectFromBubbleLoc(loc)
             position[i, :] = obj.getPosition()
             size[i] = obj.getSize()
         return position, size
-    
+
     def app2_plotTrajectory(self, bubbleListIndices, binaryFrameDir_pathObj, videoFramesDir_pathObj, fps, frameNameTemplate):
-        """ 
-        Algorithm:
-        # To create frames:
-        - Travel through the bubbleListIndices and for each bubble:
-            - Get the full trajectory of the bubble
-            - Get the corresponding color for the bubble
-            - For each frame and object pair in the trajectory:
-                - read the frame from videoFramesDir_pathObj if it exists else read it from binaryFrameDir_pathObj
-                - get the pixel rows and cols of the object
-                - color the pixels in the frame with the corresponding color
-                - write the frame to videoFramesDir_pathObj
-        # To create a video:
-        - Create a video writer object
-        - Traverse through len(self.frames) and for each frame:
-            - read the frame from videoFramesDir_pathObj if it exists else read it from binaryFrameDir_pathObj
-            - write the frame to the video writer object
-        - Release the video writer object
-        - Delete the frames in videoFramesDir_pathObj
+        """
+        Mark bubbles on frames and save the resulting frames in videoFramesDir_pathObj.
+        If frames are missing, fill them from the binaryFrameDir_pathObj.
         """
         from utils import getFrameNumbers_ordered, DoNumExistingFramesMatch
-        # check bubbleListIndices is not empty and is a list of integers else set it to all the bubbles
+        
         if bubbleListIndices is False:
             bubbleListIndices = list(range(len(self.bubbles)))
-        
-        # To create frames:
+
         colorIndex = 0
         for bubbleListIndex in tqdm(bubbleListIndices, desc='Creating frames'):
             bubble = self.bubbles[bubbleListIndex]
             trajectory = bubble.getFullTrajectory()
             color = self.getColor(colorIndex)
             colorIndex += 1
-            for i in range(len(trajectory)):
-                obj         = self.getObjectFromBubbleLoc(trajectory[i])
-                rows, cols  = obj.getAllPixelLocs()
-                frameNum    = trajectory[i][0]
-                frameName   = frameNameTemplate.format(frameNum)
-                # Check if the frame exists in videoFramesDir_pathObj
-                if (videoFramesDir_pathObj / frameName).exists():
-                    frame = cv2.imread(str(videoFramesDir_pathObj / frameName))
+            for loc in trajectory:
+                obj = self.getObjectFromBubbleLoc(loc)
+                rows, cols = obj.getAllPixelLocs()
+                frameNum = loc[0]
+                frameName = frameNameTemplate.format(frameNum)
+                framePath = videoFramesDir_pathObj / frameName
+                if framePath.exists():
+                    frame = cv2.imread(str(framePath))
                 else:
                     frame = cv2.imread(str(binaryFrameDir_pathObj / frameName))
+
+                if frame is None:
+                    logging.warning("Frame %s not found or not readable.", frameName)
+                    continue
                 frame[rows, cols, :] = color
-                # Write frameNum in the frame in top right corner in black use small font
-                cv2.putText(frame, str(frameNum), (frame.shape[1] - 30, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.25, (0, 0, 0), 1, cv2.LINE_AA)
-                cv2.imwrite(str(videoFramesDir_pathObj / frameName), frame)
-        
-        # Check the number of frames in videoFramesDir_pathObj
+                cv2.putText(frame, str(frameNum), (frame.shape[1] - 30, 70),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.25, (0, 0, 0), 1, cv2.LINE_AA)
+                cv2.imwrite(str(framePath), frame)
+
         if DoNumExistingFramesMatch(videoFramesDir_pathObj, self.getNumFrames()):
             return
-        
-        # Add the missing frames to videoFramesDir_pathObj
+
+        # Fill missing frames
         incompleteFrameNums = getFrameNumbers_ordered(videoFramesDir_pathObj, frameNameTemplate, False)
         missingFrameNums = list(set(range(self.getNumFrames())) - set(incompleteFrameNums))
         for missingFrameNum in tqdm(missingFrameNums, desc='Adding missing frames'):
             frameName = frameNameTemplate.format(missingFrameNum)
-            frame = cv2.imread(str(binaryFrameDir_pathObj / frameName))
+            framePath = binaryFrameDir_pathObj / frameName
+            frame = cv2.imread(str(framePath))
+            if frame is None:
+                logging.warning("Missing frame %s not found in binary directory.", frameName)
+                continue
             cv2.imwrite(str(videoFramesDir_pathObj / frameName), frame)
-    
+
     def plotTrajectory(self, bubbleListIndex, binaryFrameDir_pathObj, videoDir_pathObj, fps, frameNameTemplate):
-        """ 
-        Plot 
+        """
+        Plot bubble trajectory for a single bubble as a video.
         """
         if bubbleListIndex >= len(self.bubbles):
+            logging.warning("Bubble index %d out of range.", bubbleListIndex)
             return False
+
         bubble = self.bubbles[bubbleListIndex]
-        # if not bubble.isTrajectoryContinuous():
-        #     exit('Trajectory is not continuous')
         trajectory = bubble.getFullTrajectory()
         position, size = self.getPositionAndSizeArrayFromTrajectory(trajectory)
         color = self.getColor(bubbleListIndex)
-        _, videoWidth, videoHeight = self.plotTrajectory_subFunc(trajectory[0], frameNameTemplate, binaryFrameDir_pathObj, color)
+
+        # Use the first frame to get dimensions
+        videoArray, videoWidth, videoHeight = self.plotTrajectory_subFunc(trajectory[0], frameNameTemplate, binaryFrameDir_pathObj, color)
+
+        if videoArray is None:
+            logging.error("Could not read initial frame for plotting trajectory.")
+            return False
         
-        # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
-        vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')  # codec for .mp4 file
-        videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'Bub_Sstrt{:05d}_Send{:05d}_fnstrt{:05d}_fnend{:05d}.mp4'.format(int(size[0]), int(size[-1]), trajectory[0][0], trajectory[-1][0])),vidCodec, fps, (videoWidth, videoHeight))
-               
-        for i in tqdm(range(len(trajectory)) , desc='Plotting trajectory for Size = {:04d}'.format(int(size[-1]))):
-            # Create plot showing the object position (x, y) with marker size = object size
+        vidCodec = cv2.VideoWriter_fourcc(*'mp4v')
+        outName = f'Bub_Sstrt{int(size[0]):05d}_Send{int(size[-1]):05d}_fnstrt{trajectory[0][0]:05d}_fnend{trajectory[-1][0]:05d}.mp4'
+        videoWriter = cv2.VideoWriter(str(videoDir_pathObj / outName), vidCodec, fps, (videoWidth, videoHeight))
+
+        for i in tqdm(range(len(trajectory)), desc=f'Plotting trajectory for Size = {int(size[-1]):04d}'):
             videoArray, videoWidth, videoHeight = self.plotTrajectory_subFunc(trajectory[i], frameNameTemplate, binaryFrameDir_pathObj, color)
-            # Write the combined frame to the video
+            if videoArray is None:
+                logging.warning("Frame for trajectory step %d not found.", i)
+                continue
             videoWriter.write(videoArray)
-             
+
         videoWriter.release()
-        
+        logging.info("Trajectory video saved to %s", videoDir_pathObj / outName)
         return True
-        
+
     def plotTrajectory_subFunc(self, trajectory, frameNameTemplate, binaryFrameDir_pathObj, color):
-        # Get the binary frame as np array
         frameNumber = trajectory[0]
-        frameName   = frameNameTemplate.format(frameNumber)
-        framePath   = binaryFrameDir_pathObj / frameName
-        frameArray  = cv2.imread(str(framePath))
-        
-        obj         = self.getObjectFromBubbleLoc(trajectory)
-        rows, cols  = obj.getAllPixelLocs()
-        
+        frameName = frameNameTemplate.format(frameNumber)
+        framePath = binaryFrameDir_pathObj / frameName
+        frameArray = cv2.imread(str(framePath))
+        if frameArray is None:
+            logging.error("Failed to read frame %s.", frameName)
+            return None, 0, 0
+
+        obj = self.getObjectFromBubbleLoc(trajectory)
+        rows, cols = obj.getAllPixelLocs()
         frameArray[rows, cols, :] = color
-        
-        # # Set figsize based on the binary frame size
-        # sizeReductionFactor = 0.01
-        # subtractAmount = 4
-        # figsize = (frameArray.shape[0] * sizeReductionFactor - subtractAmount, frameArray.shape[0] * sizeReductionFactor) 
-        # fig = plt.figure(figsize=figsize)
-        # ax = fig.add_subplot(111)
-        # ax.scatter(position[0], position[1], s=size)
-        # ax.set_xlim(0, frameArray.shape[1])
-        # ax.set_ylim(0, frameArray.shape[0])
-        # ax.set_aspect('equal')
-        # ax.text(0.05, 0.95, 'fN = {}'.format(frameNumber), horizontalalignment='left', verticalalignment='top', transform=ax.transAxes, fontsize=6)
-        # plt.tight_layout()
-        
-        # # Get plot as np array
-        # fig.canvas.draw()
-        # plotArray = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-        # plotArray = plotArray.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-    
-        # # Combine the plot and the binary frame
-        # videoWidth  = frameArray.shape[1] + plotArray.shape[1]
-        # videoHeight = max(frameArray.shape[0], plotArray.shape[0])
-        # videoArray  = np.zeros((videoHeight, videoWidth, 3), dtype=np.uint8)
-        
-        # if frameArray.shape[0] < videoHeight: # pad the frameArray
-        #     frameArray = np.pad(frameArray, ((0, videoHeight - frameArray.shape[0]), (0, 0), (0, 0)), 'constant')
-        # if plotArray.shape[0] < videoHeight: # pad the plotArray
-        #     plotArray = np.pad(plotArray, ((0, videoHeight - plotArray.shape[0]), (0, 0), (0, 0)), 'constant')
-        
-        # videoArray[:, :frameArray.shape[1], :] = frameArray
-        # videoArray[:, frameArray.shape[1]:, :] = plotArray
-        
-        # plt.close(fig)
-        # return videoArray, videoWidth, videoHeight
+
         return frameArray, frameArray.shape[1], frameArray.shape[0]
-    
+
     def isVideoContinuous(self):
-        """ 
-        Check if the video is continuous
+        """
+        Check if frames in the video are continuous in numbering.
         """
         for i in range(len(self.frames)-1):
-            if self.frames[i+1].frameNumber - self.frames[i].frameNumber != 1:
+            if self.frames[i+1].getFrameNumber() - self.frames[i].getFrameNumber() != 1:
                 return False
         return True
-    
+
     def isSame(self, video):
+        """
+        Check if another video object contains the same frames and bubbles.
+        """
         if len(self.frames) != len(video.frames):
+            return False
+        if len(self.bubbles) != len(video.bubbles):
             return False
         
         for i in range(len(self.frames)):
             if not self.frames[i].isSame(video.frames[i]):
                 return False
-        
+
         for i in range(len(self.bubbles)):
             if not self.bubbles[i].isSame(video.bubbles[i]):
                 return False
         return True
-        
+
     def getColor(self, n):
-        """ 
-        #000000
-        #00FF00
-        #0000FF
-        #FF0000
-        #01FFFE
-        #FFA6FE
-        #FFDB66
-        #006401
-        #010067
-        #95003A
-        #007DB5
-        #FF00F6
-        #FFEEE8
-        #774D00
-        #90FB92
-        #0076FF
-        #D5FF00
-        #FF937E
-        #6A826C
-        #FF029D
-        #FE8900
-        #7A4782
-        #7E2DD2
-        #85A900
-        #FF0056
-        #A42400
-        #00AE7E
-        #683D3B
-        #BDC6FF
-        #263400
-        #BDD393
-        #00B917
-        #9E008E
-        #001544
-        #C28C9F
-        #FF74A3
-        #01D0FF
-        #004754
-        #E56FFE
-        #788231
-        #0E4CA1
-        #91D0CB
-        #BE9970
-        #968AE8
-        #BB8800
-        #43002C
-        #DEFF74
-        #00FFC6
-        #FFE502
-        #620E00
-        #008F9C
-        #98FF52
-        #7544B1
-        #B500FF
-        #00FF78
-        #FF6E41
-        #005F39
-        #6B6882
-        #5FAD4E
-        #A75740
-        #A5FFD2
-        #FFB167
-        #009BFF
-        #E85EBE 
         """
-        colorsList = ['#00FF00', '#0000FF', '#FF0000', '#01FFFE', '#FFA6FE', '#FFDB66', '#006401', '#010067', '#95003A', '#007DB5', '#FF00F6', '#FFEEE8', '#774D00', '#90FB92', '#0076FF', '#D5FF00', '#FF937E', '#6A826C', '#FF029D', '#FE8900', '#7A4782', '#7E2DD2', '#85A900', '#FF0056', '#A42400', '#00AE7E', '#683D3B', '#BDC6FF', '#263400', '#BDD393', '#00B917', '#9E008E', '#001544', '#C28C9F', '#FF74A3', '#01D0FF', '#004754', '#E56FFE', '#788231', '#0E4CA1', '#91D0CB', '#BE9970', '#968AE8', '#BB8800', '#43002C', '#DEFF74', '#00FFC6', '#FFE502', '#620E00', '#008F9C', '#98FF52', '#7544B1', '#B500FF', '#00FF78', '#FF6E41', '#005F39', '#6B6882', '#5FAD4E', '#A75740', '#A5FFD2', '#FFB167', '#009BFF', '#E85EBE']
+        Get a unique color from a predefined list, cycling through if out of range.
+        """
+        colorsList = [
+            '#00FF00', '#0000FF', '#FF0000', '#01FFFE', '#FFA6FE', '#FFDB66', '#006401', '#010067', '#95003A',
+            '#007DB5', '#FF00F6', '#FFEEE8', '#774D00', '#90FB92', '#0076FF', '#D5FF00', '#FF937E', '#6A826C',
+            '#FF029D', '#FE8900', '#7A4782', '#7E2DD2', '#85A900', '#FF0056', '#A42400', '#00AE7E', '#683D3B',
+            '#BDC6FF', '#263400', '#BDD393', '#00B917', '#9E008E', '#001544', '#C28C9F', '#FF74A3', '#01D0FF',
+            '#004754', '#E56FFE', '#788231', '#0E4CA1', '#91D0CB', '#BE9970', '#968AE8', '#BB8800', '#43002C',
+            '#DEFF74', '#00FFC6', '#FFE502', '#620E00', '#008F9C', '#98FF52', '#7544B1', '#B500FF', '#00FF78',
+            '#FF6E41', '#005F39', '#6B6882', '#5FAD4E', '#A75740', '#A5FFD2', '#FFB167', '#009BFF', '#E85EBE'
+        ]
         
         val = n % len(colorsList)
         colorHex = colorsList[val]
-        
-        # get RGB values from hex using ImageColor.getcolor
         colorRGB = ImageColor.getcolor(colorHex, "RGB")
         return colorRGB
-        

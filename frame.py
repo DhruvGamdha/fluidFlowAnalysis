@@ -1,136 +1,117 @@
 import numpy as np
+import logging
 
 class Frame:
+    """
+    A class representing a single frame containing multiple objects.
+
+    Attributes
+    ----------
+    frameNumber : int
+        The frame number.
+    objCount : int
+        Number of objects in the frame.
+    objects : list of Object
+        List of objects detected in this frame.
+    """
+
     def __init__(self):
         self.frameNumber = None
-        self.objCount   = None
-        self.objects    = []
-        
+        self.objCount = None
+        self.objects = []
+
     def setFrameNumber(self, frameNumber):
         self.frameNumber = frameNumber
-    
+
     def addObject(self, object):
         self.objects.append(object)
-        
+
     def setObjectCount(self, objCount):
         self.objCount = objCount
-    
+
     def getFrameNumber(self):
         return self.frameNumber
-    
+
     def getObjectCount(self):
         return self.objCount
-    
+
     def updateObjectCount(self):
         self.objCount = len(self.objects)
-    
+
     def getAllObjects(self):
         return self.objects
-    
+
     def getObject(self, objectIndex):
         return self.objects[objectIndex]
-    
+
     def getObjects(self, objectIndices):
         return [self.objects[i] for i in objectIndices]
-    
+
     def removeObject_index(self, objectIndex):
-        self.objects.pop(objectIndex)
-        self.updateObjectCount()
-    
-    def removeObject_indices(self, objectIndices):
-        for i in objectIndices:
-            self.objects.pop(i)
-    
-    def getNearbyObjectIndices_object(self, object, distance):
-        # create dictionary of object indices and their distances from the object satisfying the distance condition and sort it by distance
+        try:
+            self.objects.pop(objectIndex)
+            self.updateObjectCount()
+        except IndexError:
+            logging.warning("Attempted to remove invalid object index %d.", objectIndex)
+
+    def getNearbyObjectIndices_object(self, obj, distance):
+        """
+        Returns indices of objects within a certain distance of the given object's position, sorted by distance.
+        """
         objectsIndices = {}
-        for i in range(len(self.objects)):
-            if np.linalg.norm(self.objects[i].getPosition() - object.getPosition()) <= distance:
-                objectsIndices[i] = np.linalg.norm(self.objects[i].getPosition() - object.getPosition())
-        objectsIndices = {k: v for k, v in sorted(objectsIndices.items(), key=lambda item: item[1])}
-        return list(objectsIndices.keys())
-        # objectsIndices = []
-        # for i in range(len(self.objects)):
-        #     if np.linalg.norm(self.objects[i].getPosition() - object.getPosition()) <= distance:
-        #         objectsIndices.append(i)
-        # return objectsIndices
-    
-    # def getNearbyObjectIndices_position(self, position, distance):
-    #     objectsIndices = []
-    #     for i in range(len(self.objects)):
-    #         if np.linalg.norm(self.objects[i].getPosition() - position) <= distance:
-    #             objectsIndices.append(i)
-    #     return objectsIndices
-    
-    def getComparableSizeObjectIndices_object(self, object, sizeThresholdPercent):
-        # create dictionary of object indices and their sizes satisfying the size threshold condition and sort it by size
+        for i, candidate_obj in enumerate(self.objects):
+            dist = np.linalg.norm(candidate_obj.getPosition() - obj.getPosition())
+            if dist <= distance:
+                objectsIndices[i] = dist
+        # Sort by distance
+        return [k for k, v in sorted(objectsIndices.items(), key=lambda item: item[1])]
+
+    def getComparableSizeObjectIndices_object(self, obj, sizeThresholdPercent):
+        """
+        Returns indices of objects with sizes within a certain percentage threshold of the given object's size, sorted by size.
+        """
         objectsIndices = {}
-        for i in range(len(self.objects)):
-            sizeThreshold = sizeThresholdPercent * object.getSize()
-            if abs(self.objects[i].getSize() - object.getSize()) <= sizeThreshold:
-                objectsIndices[i] = self.objects[i].getSize()
-        objectsIndices = {k: v for k, v in sorted(objectsIndices.items(), key=lambda item: item[1])}
-        return list(objectsIndices.keys())
-        
-        # objectsIndices = []
-        # for i in range(len(self.objects)):
-        #     sizeThreshold = sizeThresholdPercent * object.getSize()
-        #     if abs(self.objects[i].getSize() - object.getSize()) <= sizeThreshold:
-        #         objectsIndices.append(i)
-        # return objectsIndices
-    
-    # def getComparableSizeObjectIndices_size(self, size, sizeThresholdPercent):
-    #     objectsIndices = []
-    #     for i in range(len(self.objects)):
-    #         sizeThreshold = sizeThresholdPercent * size
-    #         if abs(self.objects[i].getSize() - size) <= sizeThreshold:
-    #             objectsIndices.append(i)
-    #     return objectsIndices
-    
-    def getNearbyAndComparableSizeObjectIndices_object(self, object, distance, sizeThresholdPercent):
-        nearbyObjectsIndices            = self.getNearbyObjectIndices_object(object, distance)
-        comparableSizeObjectsIndices    = self.getComparableSizeObjectIndices_object(object, sizeThresholdPercent)
-        
-        # Find intersection of nearby and comparable size objects indices maintaining the order of nearby objects indices list
-        indices = []
-        for i in nearbyObjectsIndices:
-            if i in comparableSizeObjectsIndices:
-                indices.append(i)        
-        # indices = list(set(nearbyObjectsIndices).intersection(comparableSizeObjectsIndices))
-        # indices.sort()
+        sizeThreshold = sizeThresholdPercent * obj.getSize()
+        for i, candidate_obj in enumerate(self.objects):
+            if abs(candidate_obj.getSize() - obj.getSize()) <= sizeThreshold:
+                objectsIndices[i] = candidate_obj.getSize()
+
+        return [k for k, v in sorted(objectsIndices.items(), key=lambda item: item[1])]
+
+    def getNearbyAndComparableSizeObjectIndices_object(self, obj, distance, sizeThresholdPercent):
+        nearbyObjectsIndices = self.getNearbyObjectIndices_object(obj, distance)
+        comparableSizeObjectsIndices = self.getComparableSizeObjectIndices_object(obj, sizeThresholdPercent)
+
+        # Intersection maintaining order of nearbyObjectsIndices
+        indices = [i for i in nearbyObjectsIndices if i in comparableSizeObjectsIndices]
         return indices
-    
-    # def getNearbyAndComparableSizeObjectIndices_positionAndSize(self, position, size, distance, sizeThresholdPercent):
-    #     nearbyObjectsIndices            = self.getNearbyObjectIndices_position(position, distance)
-    #     comparableSizeObjectsIndices    = self.getComparableSizeObjectIndices_size(size, sizeThresholdPercent)
-    #     indices = list(set(nearbyObjectsIndices).intersection(comparableSizeObjectsIndices))
-    #     indices.sort()
-    #     return indices
-    
+
     def getObjectPositionList(self):
-        x = []
-        y = []
-        for object in self.objects:
-            pos = object.getPosition()
+        x, y = [], []
+        for o in self.objects:
+            pos = o.getPosition()
             x.append(pos[0])
             y.append(pos[1])
         return x, y
-    
+
     def getObjectSizeList(self):
-        size = []
-        for object in self.objects:
-            size.append(object.getSize())
-        return size
-    
+        return [o.getSize() for o in self.objects]
+
     def copy(self):
-        frame = Frame()
-        frame.setFrameNumber(self.frameNumber)
-        frame.setObjectCount(self.objCount)
-        for object in self.objects:
-            frame.addObject(object)
-        return frame
-    
+        """
+        Create a shallow copy of the frame. Objects are not cloned (same references).
+        """
+        newFrame = Frame()
+        newFrame.setFrameNumber(self.frameNumber)
+        newFrame.setObjectCount(self.objCount)
+        for obj in self.objects:
+            newFrame.addObject(obj)
+        return newFrame
+
     def isSame(self, frame):
+        """
+        Check if another Frame is the same as this one.
+        """
         if self.frameNumber != frame.getFrameNumber():
             return False
         if self.objCount != frame.getObjectCount():
