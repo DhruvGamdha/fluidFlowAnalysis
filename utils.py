@@ -79,13 +79,28 @@ def cropFrames(origFrameDir_pathObj, croppedFrameDir_pathObj, frameNameTemplate,
     logging.info("Cropping frames. Existing frames in %s may be overwritten.", str(croppedFrameDir_pathObj))
     top, bottom, left, right = params["top"], params["bottom"], params["left"], params["right"]
     
+    # if crop values are zero or invalid, set the crop parameters to the full frame
+    if (top == bottom == left == right == 0 
+        or top >= bottom 
+        or left >= right 
+        or top < 0 
+        or left < 0 
+        or bottom < 0 
+        or right < 0 
+        or top >= frame.shape[0] 
+        or left >= frame.shape[1]
+        or bottom > frame.shape[0]
+        or right > frame.shape[1]):
+        logging.warning("Invalid crop parameters. Using full frame.")
+        frame = cv2.imread(str(origFrameDir_pathObj / frameNameTemplate.format(allFramesNum[0])), 0)
+        top, bottom, left, right = 0, frame.shape[0], 0, frame.shape[1]
+    
     for frameNum in allFramesNum:
         frame_path = origFrameDir_pathObj / frameNameTemplate.format(frameNum)
         frame = cv2.imread(str(frame_path), 0)
         if frame is None:
             logging.warning("Frame %s could not be read. Skipping.", frame_path)
             continue
-
         cropped = frame[top:bottom, left:right]
         outFramePath = croppedFrameDir_pathObj / frameNameTemplate.format(frameNum)
         cv2.imwrite(str(outFramePath), cropped)
