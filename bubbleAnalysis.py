@@ -7,7 +7,7 @@ class BubbleAnalysis:
     """
 
     def __init__(self, para):
-        self.videoFPS = para['videoFPS']  
+        self.saveVideoFPS = para['saveVideoFPS']  
         self.frameNameTemplate = para['frameNameTemplate']
         self.flowType = para['flowType']
         self.videoFormat = para['inpVideoFormat']        
@@ -45,7 +45,7 @@ class BubbleAnalysis:
         """
         from utils import makeSingleVideo
         logging.info(f"Creating video from frames in {frameDir_pathObj}")
-        makeSingleVideo(frameDir_pathObj, self.frameNameTemplate, self.videoFPS)
+        makeSingleVideo(frameDir_pathObj, self.frameNameTemplate, self.saveVideoFPS)
 
     def createConcatVideo(self, lftFrameDir_pathObj: Path, rhtFrameDir_pathObj: Path, videoDir_pathObj: Path):
         """
@@ -53,7 +53,7 @@ class BubbleAnalysis:
         """
         from utils import makeConcatVideos
         logging.info(f"Creating concatenated video from {lftFrameDir_pathObj} and {rhtFrameDir_pathObj}")
-        makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, self.frameNameTemplate, videoDir_pathObj, self.videoFPS, self.params)
+        makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, self.frameNameTemplate, videoDir_pathObj, self.saveVideoFPS, self.params)
 
     def extractFrameObjects(self, binaryFrameDir_pathObj: Path, analysisBaseDir_pathObj: Path):
         """
@@ -115,7 +115,7 @@ class BubbleAnalysis:
             bubbleListIndex = range(bubbleListIndex)
 
         for ind in bubbleListIndex:
-            self.analysedVideo.plotTrajectory(ind, binaryFrameDir_pathObj, videoDir_pathObj, self.videoFPS, self.frameNameTemplate)
+            self.analysedVideo.plotTrajectory(ind, binaryFrameDir_pathObj, videoDir_pathObj, self.saveVideoFPS, self.frameNameTemplate)
 
     def markBubblesOnFrames(self, binaryFrameDir_pathObj: Path, bubbleTrackFramesDir_pathObj: Path):
         """
@@ -136,5 +136,5 @@ class BubbleAnalysis:
             bubbleListIndices = range(bubbleListIndices)
 
         self.analysedVideo.app2_plotTrajectory(
-            bubbleListIndices, binaryFrameDir_pathObj, bubbleTrackFramesDir_pathObj, self.videoFPS, self.frameNameTemplate
+            bubbleListIndices, binaryFrameDir_pathObj, bubbleTrackFramesDir_pathObj, self.saveVideoFPS, self.frameNameTemplate
         )
