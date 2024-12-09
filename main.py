@@ -73,6 +73,7 @@ def configure_logging(outpDirObj):
     logging.getLogger().addHandler(file_handler)
     logging.getLogger().addHandler(console_handler)
     
+    logging.info("========================================")
     logging.info(f"Logging configured. Writing logs to {log_file_path}")
 
 def run_analysis(para):
