@@ -13,7 +13,10 @@ import pathlib as pl
 import parse
 
 # function to read and save video
-def readAndSaveVid(videoFramesPathObj, videoFormat, frameNameTemplate):
+def readAndSaveVid(videoFramesPathObj, 
+                   videoFormat, 
+                   frameNameTemplate, 
+                   rotate = False):
     allVideoFiles = [f for f in videoFramesPathObj.parent.iterdir() if (f.is_file() and f.suffix == videoFormat)]
     if len(allVideoFiles) != 1:
         print("Number of videos in the folder is not 1")
@@ -25,7 +28,8 @@ def readAndSaveVid(videoFramesPathObj, videoFormat, frameNameTemplate):
         return
     
     numFrames       = int(video.get(cv2.CAP_PROP_FRAME_COUNT))          # Get number of frames in the video
-    if DoNumExistingFramesMatch(videoFramesPathObj, numFrames):
+    if DoNumExistingFramesMatch(videoFramesPathObj, 
+                                numFrames):
         return
     
     print("If frames already exist inside {}, they will be overwritten.".format(str(videoFramesPathObj)))
@@ -35,39 +39,67 @@ def readAndSaveVid(videoFramesPathObj, videoFormat, frameNameTemplate):
         if not ret:         # Check if frame is read correctly
             print("Can't receive frame (stream end?). Exiting ...")
             break
-        cv2.imwrite(str(videoFramesPathObj/frameNameTemplate.format(count)) , frame )
+        if rotate:  # Rotate by 90 counter-clockwise
+            frame = cv2.rotate(frame, 
+                               cv2.ROTATE_90_COUNTERCLOCKWISE)
+        cv2.imwrite(str(videoFramesPathObj/frameNameTemplate.format(count)), 
+                    frame )
         count += 1
         
-def cropFrames(origFrameDir_pathObj, croppedFrameDir_pathObj, frameNameTemplate, params):
-    allFramesNum    = getFrameNumbers_ordered(origFrameDir_pathObj, frameNameTemplate)
-    if DoNumExistingFramesMatch(croppedFrameDir_pathObj, len(allFramesNum)):
+def cropFrames(origFrameDir_pathObj, 
+               croppedFrameDir_pathObj, 
+               frameNameTemplate, 
+               params):
+    allFramesNum    = getFrameNumbers_ordered(origFrameDir_pathObj, 
+                                              frameNameTemplate)
+    if DoNumExistingFramesMatch(croppedFrameDir_pathObj, 
+                                len(allFramesNum)):
         return
      
     print("If frames already exist inside {}, they will be overwritten.".format(str(croppedFrameDir_pathObj)))
     for frameNum in allFramesNum:
-        frame = cv2.imread(str(origFrameDir_pathObj/frameNameTemplate.format(frameNum)), 0)
+        frame = cv2.imread(str(origFrameDir_pathObj/frameNameTemplate.format(frameNum)), 
+                           0)
         frame = frame[  params["top"]   :   params["bottom"]    ,   params["left"]  :   params["right"] ]
-        cv2.imwrite(str(croppedFrameDir_pathObj/frameNameTemplate.format(frameNum)) , frame )
+        cv2.imwrite(str(croppedFrameDir_pathObj/frameNameTemplate.format(frameNum)), 
+                    frame)
 
-def processImages(originalFrameDir_pathObj, binaryFrameDir_pathObj, nameTemplate, params):
-    allFramesNum    = getFrameNumbers_ordered(originalFrameDir_pathObj, nameTemplate)
-    if DoNumExistingFramesMatch(binaryFrameDir_pathObj, len(allFramesNum)):
+def processImages(originalFrameDir_pathObj, 
+                  binaryFrameDir_pathObj, 
+                  nameTemplate, 
+                  params):
+    allFramesNum    = getFrameNumbers_ordered(originalFrameDir_pathObj, 
+                                              nameTemplate)
+    if DoNumExistingFramesMatch(binaryFrameDir_pathObj, 
+                                len(allFramesNum)):
         return
     
     for frameNum in tqdm(allFramesNum, desc="Processing frames"):
-        frame           = cv2.imread(str(originalFrameDir_pathObj/nameTemplate.format(frameNum)), 0)
-        th2             = cv2.adaptiveThreshold(frame,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,    params["blockSize"],    params["constantSub"])
+        frame           = cv2.imread(str(originalFrameDir_pathObj/nameTemplate.format(frameNum)), 
+                                     0)
+        th2             = cv2.adaptiveThreshold(frame,
+                                                255,
+                                                cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                                cv2.THRESH_BINARY, 
+                                                params["blockSize"],
+                                                params["constantSub"])
         invth2          = 255 - th2    
         
         # closing
-        kernel          = np.ones((params["C_O_KernelSize"],params["C_O_KernelSize"]),np.uint8)
-        invth2          = cv2.morphologyEx(invth2, cv2.MORPH_CLOSE, kernel)
+        kernel          = np.ones((params["C_O_KernelSize"],
+                                   params["C_O_KernelSize"]),
+                                   np.uint8)
+        invth2          = cv2.morphologyEx(invth2, 
+                                           cv2.MORPH_CLOSE, 
+                                           kernel)
         
         # # opening
         # kernel          = np.ones((params["C_O_KernelSize"],params["C_O_KernelSize"]),np.uint8)
         # invth2          = cv2.morphologyEx(invth2, cv2.MORPH_OPEN, kernel)
         
-        labelImg, count = skm.label(invth2, connectivity=params["connectivity"], return_num=True)
+        labelImg, count = skm.label(invth2, 
+                                    connectivity=params["connectivity"], 
+                                    return_num=True)
         
         for i in range(1, count+1):
             numPixels = np.sum(labelImg == i)
@@ -77,11 +109,17 @@ def processImages(originalFrameDir_pathObj, binaryFrameDir_pathObj, nameTemplate
         th2 = 255 - invth2
         cv2.imwrite(str(binaryFrameDir_pathObj/nameTemplate.format(frameNum)), th2)
 
-def makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, nameTemplate, videoDir_pathObj, fps, params):
+def makeConcatVideos(lftFrameDir_pathObj, 
+                     rhtFrameDir_pathObj, 
+                     nameTemplate, 
+                     videoDir_pathObj, 
+                     fps, 
+                     params):
     if checkVideoFileExists(videoDir_pathObj, 'combined'):
         print("Combined video already exists in {}. Skipping.".format(str(videoDir_pathObj)))
         return    
-    allFramesNum    = getFrameNumbers_ordered(rhtFrameDir_pathObj, nameTemplate)
+    allFramesNum    = getFrameNumbers_ordered(rhtFrameDir_pathObj, 
+                                              nameTemplate)
     tempImg1 = cv2.imread(str(lftFrameDir_pathObj/nameTemplate.format(allFramesNum[0])), 0)
     tempImg2 = cv2.imread(str(rhtFrameDir_pathObj/nameTemplate.format(allFramesNum[0])), 0)
     
@@ -92,7 +130,10 @@ def makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, nameTemplate, vid
     
     # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
     vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')  # codec for .mp4 file
-    videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'videoCombined.mp4'),vidCodec, fps, (videoWidth, videoHeight))
+    videoWriter = cv2.VideoWriter(str(videoDir_pathObj / 'videoCombined.mp4'), 
+                                  vidCodec, 
+                                  fps, 
+                                  (videoWidth, videoHeight))
     
     for frameNum in tqdm(allFramesNum, desc="Making video"):
         lft_img = cv2.imread(str(lftFrameDir_pathObj/nameTemplate.format(frameNum)))
@@ -101,26 +142,48 @@ def makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, nameTemplate, vid
             print("Can't receive frame (stream end?). Exiting ...")
             exit()
         # make bin_img and frm_img height the same size as videoHeight by adding black pixels
-        bin_img     = cv2.copyMakeBorder(bin_img, 0, videoHeight - height1, 0, 0, cv2.BORDER_CONSTANT, value=[0,0,0])
-        lft_img     = cv2.copyMakeBorder(lft_img, 0, videoHeight - height2, 0, 0, cv2.BORDER_CONSTANT, value=[0,0,0])
-        concat_img  = np.concatenate((lft_img, bin_img), axis=1)     # Concatenate the two images horizontally (i.e. side-by-side)
+        bin_img     = cv2.copyMakeBorder(bin_img, 
+                                         0, 
+                                         videoHeight - height1, 
+                                         0, 
+                                         0, 
+                                         cv2.BORDER_CONSTANT, 
+                                         value=[0,0,0])
+        
+        lft_img     = cv2.copyMakeBorder(lft_img, 
+                                         0, 
+                                         videoHeight - height2, 
+                                         0, 
+                                         0, 
+                                         cv2.BORDER_CONSTANT, 
+                                         value=[0,0,0])
+        
+        concat_img  = np.concatenate((lft_img, 
+                                      bin_img), 
+                                     axis=1)     # Concatenate the two images horizontally (i.e. side-by-side)
         videoWriter.write(concat_img) # Write the frame to video file
     cv2.destroyAllWindows()
     videoWriter.release() # Now the video is saved in the current directory
 
-def makeSingleVideo(framePathObj, nameTemplate, fps):
+def makeSingleVideo(framePathObj, 
+                    nameTemplate, 
+                    fps):
     if checkVideoFileExists(framePathObj.parent, 'isolated'):
         print("Isolated video already exists in {}. Skipping.".format(str(framePathObj.parent)))
         return
     
-    allFramesNum    = getFrameNumbers_ordered(framePathObj, nameTemplate)
+    allFramesNum    = getFrameNumbers_ordered(framePathObj, 
+                                              nameTemplate)
     tempImg         = cv2.imread(str(framePathObj/nameTemplate.format(allFramesNum[0])), 0)
     height, width   = tempImg.shape
     
     # Define the codec and create VideoWriter object
     # vidCodec = cv2.VideoWriter_fourcc(*'XVID')
     vidCodec    = cv2.VideoWriter_fourcc(*'mp4v')
-    videoWriter = cv2.VideoWriter(str(framePathObj.parent / 'videoIsolated.mp4'),vidCodec, fps, (width, height))
+    videoWriter = cv2.VideoWriter(str(framePathObj.parent / 'videoIsolated.mp4'), 
+                                  vidCodec, 
+                                  fps, 
+                                  (width, height))
     
     for frameNum in tqdm(allFramesNum, desc="Making video"):
         frm_img = cv2.imread(str(framePathObj/nameTemplate.format(frameNum)))
@@ -141,12 +204,19 @@ def checkVideoFileExists(videoDir_pathObj, videType):
         return False
     return videoPath.exists()
 
-def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTemplate, params):
+def dropAnalysis(binaryFrameDir_pathObj, 
+                 analysisBaseDir_pathObj, 
+                 frameNameTemplate, 
+                 params):
     video       = Video()
-    allFramesNum= getFrameNumbers_ordered(binaryFrameDir_pathObj, frameNameTemplate)
+    allFramesNum= getFrameNumbers_ordered(binaryFrameDir_pathObj, 
+                                          frameNameTemplate)
     connectivity= params["connectivity"]
     for frameNum in tqdm(allFramesNum, desc="Analyzing drops"):
-        labelImg, count, imgShape = imgSegmentation(binaryFrameDir_pathObj, frameNameTemplate, frameNum, connectivity)
+        labelImg, count, imgShape = imgSegmentation(binaryFrameDir_pathObj, 
+                                                    frameNameTemplate, 
+                                                    frameNum, 
+                                                    connectivity)
         frame = Frame()
         frame.setFrameNumber(frameNum)
         frame.setObjectCount(count)
@@ -156,7 +226,13 @@ def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTempl
             topLft_y   = imgShape[0] - np.min(rows)
             topLft_x   = np.min(cols)
             objInd = objLabel - 1
-            obj = Object(frameNum, objInd, topLft_x, topLft_y, len(rows), rows, cols)
+            obj = Object(frameNum, 
+                         objInd, 
+                         topLft_x, 
+                         topLft_y, 
+                         len(rows), 
+                         rows, 
+                         cols)
             frame.addObject(obj)
         
         video.addFrame(frame)
@@ -167,14 +243,22 @@ def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTempl
         
     return video
     
-def imgSegmentation(binaryFrameDir_pathObj, nameTemplate, frameNum, connectivity):
-    img = cv2.imread(str(binaryFrameDir_pathObj/nameTemplate.format(frameNum)), 0)
+def imgSegmentation(binaryFrameDir_pathObj, 
+                    nameTemplate, 
+                    frameNum, 
+                    connectivity):
+    img = cv2.imread(str(binaryFrameDir_pathObj/nameTemplate.format(frameNum)), 
+                     0)
     img = cv2.bitwise_not(img)                                      # invert the binary image
     imgShape = img.shape
-    labelImg, count = skm.label(img, connectivity=connectivity, return_num=True)
+    labelImg, count = skm.label(img, 
+                                connectivity=connectivity, 
+                                return_num=True)
     return labelImg, count, imgShape
 
-def getFrameNumbers_ordered(framePathObj, nameTemplate, exitOnFail=True):
+def getFrameNumbers_ordered(framePathObj, 
+                            nameTemplate, 
+                            exitOnFail=True):
     allFramePathObj_unorder  = [f for f in framePathObj.iterdir() if (f.is_file() and f.suffix == ".png")]    # Read the binary images
     allFramesNum           = np.zeros(len(allFramePathObj_unorder))  # create numpy array to store the frame numbers
     
@@ -185,7 +269,8 @@ def getFrameNumbers_ordered(framePathObj, nameTemplate, exitOnFail=True):
     allFramesNum = np.sort(allFramesNum).astype(int)                # sort the frame numbers
     
     # Check if the frame numbers are continuous
-    if not np.array_equal(allFramesNum, np.arange(allFramesNum[0], allFramesNum[-1]+1)):
+    if not np.array_equal(allFramesNum, 
+                          np.arange(allFramesNum[0], allFramesNum[-1]+1)):
         print("Frame numbers are not continuous")
         if exitOnFail:
             exit()
@@ -200,7 +285,12 @@ def DoNumExistingFramesMatch(frameDir_pathObj, numFramesToCreate):
         return True
     return False
 
-def plotFrameObjectAnalysis(frameObj, frameNum, numBubbles, imgShape, analysisBaseDir_pathObj, frameNameTemplate):
+def plotFrameObjectAnalysis(frameObj, 
+                            frameNum, 
+                            numBubbles, 
+                            imgShape, 
+                            analysisBaseDir_pathObj, 
+                            frameNameTemplate):
     _, bubble_vertPos   = frameObj.getObjectPositionList()
     bubble_pixSize      = frameObj.getObjectSizeList()
 

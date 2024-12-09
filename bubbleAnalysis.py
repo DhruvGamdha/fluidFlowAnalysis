@@ -12,33 +12,59 @@ class bubbleAnalysis:
         
     def getFramesFromVideo(self, videoFramesDir_pathObj):
         from utils import readAndSaveVid
-        readAndSaveVid(videoFramesDir_pathObj, self.videoFormat, self.frameNameTemplate)
+        ## check if self.params['inputRotate'] is present
+        if 'inputRotate' in self.params:
+            readAndSaveVid(videoFramesDir_pathObj, 
+                           self.videoFormat, 
+                           self.frameNameTemplate, 
+                           self.params['inputRotate'])
+        
+        readAndSaveVid(videoFramesDir_pathObj, 
+                       self.videoFormat, 
+                       self.frameNameTemplate)
     
     def getCroppedFrames(self, origFrameDir_pathObj, croppedFrameDir_pathObj):
         from utils import cropFrames
-        cropFrames(origFrameDir_pathObj, croppedFrameDir_pathObj, self.frameNameTemplate, self.params)
+        cropFrames(origFrameDir_pathObj, 
+                   croppedFrameDir_pathObj, 
+                   self.frameNameTemplate, 
+                   self.params)
     
     def getBinaryImages(self, origFrameDir_pathObj, binaryFrameDir_pathObj):
         from utils import processImages
-        processImages(origFrameDir_pathObj, binaryFrameDir_pathObj, self.frameNameTemplate, self.params)
+        processImages(origFrameDir_pathObj, 
+                      binaryFrameDir_pathObj, 
+                      self.frameNameTemplate, 
+                      self.params)
         
     def createVideoFromFrames(self, frameDir_pathObj):
         from utils import makeSingleVideo
-        makeSingleVideo(frameDir_pathObj, self.frameNameTemplate, self.videoFPS)
+        makeSingleVideo(frameDir_pathObj, 
+                        self.frameNameTemplate, 
+                        self.videoFPS)
           
     def createConcatVideo(self, lftFrameDir_pathObj, rhtFrameDir_pathObj, videoDir_pathObj):
         from utils import makeConcatVideos
-        makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, self.frameNameTemplate, videoDir_pathObj, self.videoFPS, self.params)    
+        makeConcatVideos(lftFrameDir_pathObj, 
+                         rhtFrameDir_pathObj, 
+                         self.frameNameTemplate, 
+                         videoDir_pathObj, 
+                         self.videoFPS, 
+                         self.params)    
     
     def extractFrameObjects(self, binaryFrameDir_pathObj, analysisBaseDir_pathObj):
         from video import Video
         from utils import dropAnalysis, getFrameNumbers_ordered, DoNumExistingFramesMatch
         
         self.analysedVideo = Video()
-        # allFramesNum = getFrameNumbers_ordered(binaryFrameDir_pathObj, self.frameNameTemplate)
-        # condn1      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "pixSize" / "frames" , len(allFramesNum))
-        # condn2      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "vertPos" / "frames" , len(allFramesNum))
-        # condn3      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "dynamicMarker" / "frames" , len(allFramesNum))
+        # allFramesNum = getFrameNumbers_ordered(binaryFrameDir_pathObj, 
+        #                                        self.frameNameTemplate)
+        # condn1      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "pixSize" / "frames" , 
+        #                                        len(allFramesNum))
+        # condn2      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "vertPos" / "frames" , 
+        #                                        len(allFramesNum))
+        # condn3      = DoNumExistingFramesMatch(analysisBaseDir_pathObj/ "dynamicMarker" / "frames",
+        #                                        len(allFramesNum))
         filePathObj = analysisBaseDir_pathObj / 'videoFrames.txt'
         condn4      = filePathObj.exists()
         
@@ -47,7 +73,10 @@ class bubbleAnalysis:
             self.analysedVideo.loadFramesFromTextFile(analysisBaseDir_pathObj)
             return 
         
-        self.analysedVideo = dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, self.frameNameTemplate, self.params)
+        self.analysedVideo = dropAnalysis(binaryFrameDir_pathObj, 
+                                          analysisBaseDir_pathObj, 
+                                          self.frameNameTemplate, 
+                                          self.params)
         self.analysedVideo.saveFramesToTextFile(analysisBaseDir_pathObj)
         
     
@@ -83,7 +112,11 @@ class bubbleAnalysis:
             bubbleListIndex = range(self.analysedVideo.getNumBubbles())
         
         for ind in bubbleListIndex:
-            self.analysedVideo.plotTrajectory(ind, binaryFrameDir_pathObj, videoDir_pathObj, self.videoFPS, self.frameNameTemplate)
+            self.analysedVideo.plotTrajectory(ind, 
+                                              binaryFrameDir_pathObj, 
+                                              videoDir_pathObj, 
+                                              self.videoFPS, 
+                                              self.frameNameTemplate)
     
     def markBubblesOnFrames(self, binaryFrameDir_pathObj, bubbleTrackFramesDir_pathObj):
         ''' 
@@ -100,7 +133,11 @@ class bubbleAnalysis:
         if self.params['bubbleListIndex'] != False:
             bubbleListIndices = range(self.params['bubbleListIndex'])
              
-        self.analysedVideo.app2_plotTrajectory(bubbleListIndices, binaryFrameDir_pathObj, bubbleTrackFramesDir_pathObj, self.videoFPS, self.frameNameTemplate)
+        self.analysedVideo.app2_plotTrajectory(bubbleListIndices, 
+                                               binaryFrameDir_pathObj, 
+                                               bubbleTrackFramesDir_pathObj, 
+                                               self.videoFPS, 
+                                               self.frameNameTemplate)
     
     # def flowTypeParams(self, flowType):
     #     para = {}
