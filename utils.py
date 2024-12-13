@@ -389,3 +389,12 @@ def DoNumExistingFramesMatch(frameDir_pathObj: pl.Path, numFramesToCreate):
                      numExistingFile, frameDir_pathObj)
         return True
     return False
+
+def calculatePixelCentroid(pixelLocs):
+    """
+    Calculate the center of mass of a set of pixel locations.
+    """
+    rows, cols = pixelLocs
+    x = int(round(np.mean(cols)))
+    y = int(round(np.mean(rows)))
+    return np.array([x, y])

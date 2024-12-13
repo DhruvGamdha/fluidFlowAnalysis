@@ -14,6 +14,7 @@ class Bubble:
     def __init__(self, bubbleIndex: int):
         self.trajectory = []
         self.bubbleIndex = bubbleIndex
+        self.positions = None      # Will be a Nx2 array (x, y)
         self.velocities = None     # Will be a Nx2 array (vx, vy)
         self.accelerations = None  # Will be a Mx2 array (ax, ay)
 

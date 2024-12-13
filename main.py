@@ -136,7 +136,7 @@ def run_analysis(para):
         outpDirObj.getDirPathObj('analysis/pixSize/frames').parents[1]
     )
 
-    analysis.evaluateBubbleTrajectory(
+    analysis.analyzeBubbleMotion(
         outpDirObj.getDirPathObj('analysis/bubbleTracking/frames').parents[1]
     )
     

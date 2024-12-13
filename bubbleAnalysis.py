@@ -88,17 +88,18 @@ class BubbleAnalysis:
             logging.error("Video analysis data not saved correctly.")
             exit(1)
 
-    def evaluateBubbleTrajectory(self, analysisBaseDir_pathObj: Path):
+    def analyzeBubbleMotion(self, analysisBaseDir_pathObj: Path):
         """
         Evaluate and save bubble trajectories.
         """
         logging.info("Evaluating bubble trajectory...")
-        filePathObj = analysisBaseDir_pathObj / 'videoBubbles.txt'
+        filePathObj = analysisBaseDir_pathObj / 'videoBubbles.json'
         if filePathObj.exists():
             logging.info("Loading existing bubble trajectory data...")
             self.analysedVideo.loadBubblesFromTextFile(analysisBaseDir_pathObj)
         else:
             self.analysedVideo.trackObjects(self.params)
+            self.analysedVideo.computeBubbleKinematics(self.params)
             self.analysedVideo.saveBubblesToTextFile(analysisBaseDir_pathObj)
 
     def plotBubbleTrajectory(self, binaryFrameDir_pathObj: Path, videoDir_pathObj: Path):
@@ -121,7 +122,7 @@ class BubbleAnalysis:
         """
         logging.info("Plotting bubble kinematics...")
         for i in range(self.analysedVideo.getNumBubbles()):
-            self.analysedVideo.plotBubbleKinematics(i, outDir_pathObj=videoDir_pathObj)
+            self.analysedVideo.plotBubbleKinematics(i, self.params, outDir_pathObj=videoDir_pathObj)
 
     def markBubblesOnFrames(self, binaryFrameDir_pathObj: Path, bubbleTrackFramesDir_pathObj: Path):
         """

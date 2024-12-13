@@ -1,4 +1,5 @@
 import numpy as np
+from utils import calculatePixelCentroid
 
 class Object:
     """
@@ -26,7 +27,7 @@ class Object:
         self.topLft_position = np.array([topLft_x, topLft_y])
         self.size = size
         self.pixelLocs = np.array([rows, cols])
-        self.position = self.getCenterOfMass()
+        self.position = calculatePixelCentroid(self.pixelLocs)
 
     def setFrameNumber(self, frameNumber):
         self.frameNumber = frameNumber
@@ -57,12 +58,6 @@ class Object:
 
     def getSize(self):
         return self.size
-
-    def getCenterOfMass(self):
-        rows, cols = self.pixelLocs
-        x = int(round(np.mean(cols)))
-        y = int(round(np.mean(rows)))
-        return np.array([x, y])
 
     def getPixelLoc(self, index):
         row = self.pixelLocs[0][index]

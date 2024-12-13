@@ -10,7 +10,7 @@ import json
 from object import Object
 from frame import Frame
 from bubble import Bubble
-from utils import getFrameNumbers_ordered, imgSegmentation
+from utils import getFrameNumbers_ordered, imgSegmentation, calculatePixelCentroid
 
 from typing import List, Tuple
 
@@ -118,6 +118,7 @@ class Video:
             bubbleData = {
                 "bubbleIndex": bubble.getBubbleIndex(),
                 "trajectory": bubble.getFullTrajectory(),
+                "positions": bubble.positions.tolist() if bubble.positions is not None and bubble.positions.size > 0 else [],
                 "velocities": bubble.velocities.tolist() if bubble.velocities is not None and bubble.velocities.size > 0 else [],
                 "accelerations": bubble.accelerations.tolist() if bubble.accelerations is not None and bubble.accelerations.size > 0 else []
             }
@@ -153,6 +154,7 @@ class Video:
         for bubbleInfo in bubblesList:
             bubbleIndex = bubbleInfo["bubbleIndex"]
             trajectory = bubbleInfo["trajectory"]
+            positions = bubbleInfo.get("positions", [])
             velocities = bubbleInfo.get("velocities", [])
             accelerations = bubbleInfo.get("accelerations", [])
 
@@ -163,6 +165,7 @@ class Video:
                 bubble.appendTrajectory(frameNumber, objectIndex)
 
             # Convert velocities and accelerations back to numpy arrays
+            bubble.positions = np.array(positions) if positions else np.array([])
             bubble.velocities = np.array(velocities) if velocities else np.array([])
             bubble.accelerations = np.array(accelerations) if accelerations else np.array([])
 
@@ -461,7 +464,7 @@ class Video:
 
         return frameArray, frameArray.shape[1], frameArray.shape[0]
     
-    def plotBubbleKinematics(self, bubbleIndex, outDir_pathObj):
+    def plotBubbleKinematics(self, bubbleIndex, params, outDir_pathObj):
         """
         Plot the position, velocity, and acceleration of a given bubble and save the plot.
         
@@ -475,7 +478,7 @@ class Video:
         if bubbleIndex < 0 or bubbleIndex >= self.getNumBubbles():
             logging.error("Invalid bubble index %d", bubbleIndex)
             return
-        
+        dt = params['frameTimeStep']
         bubble: Bubble = self.bubbles[bubbleIndex]
         trajectory = bubble.getFullTrajectory()
 
@@ -484,8 +487,9 @@ class Video:
             return
 
         # Extract frame numbers and positions
-        position, _ = self.getPositionAndSizeArrayFromTrajectory( bubble )
+        position = bubble.positions
         frameNumbers = [loc[0] for loc in trajectory]
+        frameTime = np.arange(0, len(frameNumbers)*dt, dt)
 
         # position is Nx2 (x,y)
         x = position[:, 0]
@@ -498,6 +502,7 @@ class Video:
             vy = bubble.velocities[:, 1]
             # velocity is defined between frames, we can associate them with frames[1:]
             velFrames = frameNumbers[1:]
+            velTime = np.arange(0, len(velFrames)*dt, dt)
         else:
             velFrames = []
 
@@ -508,6 +513,7 @@ class Video:
             ay = bubble.accelerations[:, 1]
             # acceleration is defined between velocity points, so frames[2:]
             accFrames = frameNumbers[2:]
+            accTime = np.arange(0, len(accFrames)*dt, dt)
         else:
             accFrames = []
 
@@ -516,18 +522,24 @@ class Video:
         fig.suptitle(f"Bubble {bubble.getBubbleIndex()} Kinematics", fontsize=16)
 
         # Plot Position
-        axs[0].plot(frameNumbers, x, label='X position')
-        axs[0].plot(frameNumbers, y, label='Y position')
-        axs[0].set_xlabel('Frame Number')
+        # axs[0].plot(frameNumbers, x, label='X position')
+        # axs[0].plot(frameNumbers, y, label='Y position')
+        # axs[0].set_xlabel('Frame Number')
+        axs[0].plot(frameTime, x, label='X position')
+        axs[0].plot(frameTime, y, label='Y position')
+        axs[0].set_xlabel('Time (s)')
         axs[0].set_ylabel('Position (pixels)')
         axs[0].legend()
         axs[0].grid(True)
 
         # Plot Velocity if available
         if vx is not None and vy is not None:
-            axs[1].plot(velFrames, vx, label='Vx')
-            axs[1].plot(velFrames, vy, label='Vy')
-            axs[1].set_xlabel('Frame Number')
+            # axs[1].plot(velFrames, vx, label='Vx')
+            # axs[1].plot(velFrames, vy, label='Vy')
+            # axs[1].set_xlabel('Frame Number')
+            axs[1].plot(velTime, vx, label='Vx')
+            axs[1].plot(velTime, vy, label='Vy')
+            axs[1].set_xlabel('Time (s)')
             axs[1].set_ylabel('Velocity (pixels/s)')
             axs[1].legend()
             axs[1].grid(True)
@@ -537,9 +549,12 @@ class Video:
 
         # Plot Acceleration if available
         if ax is not None and ay is not None:
-            axs[2].plot(accFrames, ax, label='Ax')
-            axs[2].plot(accFrames, ay, label='Ay')
-            axs[2].set_xlabel('Frame Number')
+            # axs[2].plot(accFrames, ax, label='Ax')
+            # axs[2].plot(accFrames, ay, label='Ay')
+            # axs[2].set_xlabel('Frame Number')
+            axs[2].plot(accTime, ax, label='Ax')
+            axs[2].plot(accTime, ay, label='Ay')
+            axs[2].set_xlabel('Time (s)')
             axs[2].set_ylabel('Acceleration (pixels/s²)')
             axs[2].legend()
             axs[2].grid(True)
@@ -668,6 +683,57 @@ class Video:
                 size[i] = 0  # Assign 0 for missing sizes
         return position, size
 
+    
+    def computeBubbleKinematics(self, params: dict):
+        """
+        Evaluate bubble features like position, velocity, acceleration.
+        
+        Steps:
+        1. Loop through all bubbles.
+        2. For each bubble, get the trajectory (frameNumber, objectIndex).
+        3. For each trajectory point, get the object and its pixel locations.
+        4. Compute features like position (default: center of mass, but can be changed) and fill the position array.
+        5. Use the position array to compute velocities and accelerations using the input time step and store in the velocities and accelerations arrays.
+        """
+        
+        dt = params.get('frameTimeStep')
+        
+        for bubble in self.bubbles:
+            trajectory = bubble.getFullTrajectory()
+            n_points = len(trajectory)
+            bubble.positions = np.zeros((n_points, 2), dtype=float)
+            
+            # Loop through all trajectory points and compute position
+            for i, loc in enumerate(trajectory):
+                try:
+                    obj:Object = self.getObjectFromBubbleLoc(loc)
+                    pixelLocs = obj.getAllPixelLocs()
+                    
+                    # Compute position (center of mass) 
+                    bubble.positions[i, :] = calculatePixelCentroid(pixelLocs)
+                                        
+                except ValueError as e:
+                    logging.error(f"Error retrieving object for trajectory location {loc}: {e}")
+                    bubble.positions[i, :] = [np.nan, np.nan]  # Assign NaN for missing positions
+            
+            if n_points < 2:
+                logging.warning(f"Not enough data points to compute velocity for Bubble {bubble.bubbleIndex}.")
+                bubble.velocities = np.array([])
+                bubble.accelerations = np.array([])
+                continue
+            
+            # Compute velocities
+            vel = (bubble.positions[1:] - bubble.positions[:-1]) / dt
+            bubble.velocities = vel
+            
+            if n_points < 3:
+                logging.warning(f"Not enough data points to compute acceleration for Bubble {bubble.bubbleIndex}.")
+                bubble.accelerations = np.array([])
+                continue
+            
+            # Compute accelerations
+            acc = (vel[1:] - vel[:-1]) / dt
+            bubble.accelerations = acc    
 
 
 def convert_to_builtin_types(obj):
