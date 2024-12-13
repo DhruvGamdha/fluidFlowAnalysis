@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from video import Video
 
 class BubbleAnalysis:
     """
@@ -11,7 +12,7 @@ class BubbleAnalysis:
         self.frameNameTemplate = para['frameNameTemplate']
         self.flowType = para['flowType']
         self.videoFormat = para['inpVideoFormat']        
-        self.analysedVideo = None
+        self.analysedVideo: Video = None
         self.params = para
 
     def getFramesFromVideo(self, videoFramesDir_pathObj: Path):
@@ -59,8 +60,6 @@ class BubbleAnalysis:
         """
         Extract frame objects and perform initial analysis steps, saving the results for future steps.
         """
-        from video import Video
-        from utils import dropAnalysis
 
         logging.info("Extracting frame objects for analysis...")
         self.analysedVideo = Video()
@@ -71,14 +70,13 @@ class BubbleAnalysis:
             logging.info("Loading existing frame analysis from text file...")
             self.analysedVideo.loadFramesFromTextFile(analysisBaseDir_pathObj)
         else:
-            self.analysedVideo = dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, self.frameNameTemplate, self.params)
+            self.analysedVideo = Video.dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, self.frameNameTemplate, self.params)
             self.analysedVideo.saveFramesToTextFile(analysisBaseDir_pathObj)
 
     def checkVideoFilesOnDisk(self, analysisBaseDir_pathObj: Path):
         """
         Verify that the analyzed video and bubble data was saved correctly.
         """
-        from video import Video
         logging.info("Verifying saved analysis results...")
         newVideo = Video()
         newVideo.loadFramesFromTextFile(analysisBaseDir_pathObj)

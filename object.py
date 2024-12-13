@@ -72,7 +72,7 @@ class Object:
     def getAllPixelLocs(self):
         return self.pixelLocs[0], self.pixelLocs[1]
 
-    def isSame(self, obj):
+    def isSame(self, obj: 'Object'):
         cond1 = self.frameNumber == obj.getFrameNumber()
         cond2 = self.objectIndex == obj.getObjectIndex()
         cond3 = (self.position[0] == obj.getX()) and (self.position[1] == obj.getY())

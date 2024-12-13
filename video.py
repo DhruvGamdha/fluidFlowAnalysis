@@ -10,6 +10,9 @@ import json
 from object import Object
 from frame import Frame
 from bubble import Bubble
+from utils import getFrameNumbers_ordered, imgSegmentation
+
+from typing import List, Tuple
 
 class Video:
     """
@@ -24,10 +27,10 @@ class Video:
     """
 
     def __init__(self):
-        self.frames = []
-        self.bubbles = []
+        self.frames: List[Frame] = []
+        self.bubbles: List[Bubble] = []
 
-    def addFrame(self, frame):
+    def addFrame(self, frame: Frame):
         """
         Add a Frame object to the video.
         """
@@ -48,7 +51,58 @@ class Video:
     def getNumBubbles(self):
         return len(self.bubbles)
     
-    def saveBubblesToTextFile(self, saveDir_pathObj):
+    @classmethod
+    def dropAnalysis(cls, binaryFrameDir_pathObj: Path, analysisBaseDir_pathObj: Path, frameNameTemplate: str, params: dict) -> 'Video':
+        """
+        Perform analysis on the binary frames to identify objects (bubbles) and their properties.
+
+        Parameters
+        ----------
+        binaryFrameDir_pathObj : pathlib.Path
+            Directory containing binary frames.
+        analysisBaseDir_pathObj : pathlib.Path
+            Base directory for saving analysis results.
+        frameNameTemplate : str
+            Template for naming frames.
+        params : dict
+            Configuration parameters, including 'connectivity'.
+
+        Returns
+        -------
+        Video
+            A Video object populated with Frame and Object data.
+        """
+        # video = Video()
+        video = cls()
+        allFramesNum = getFrameNumbers_ordered(binaryFrameDir_pathObj, frameNameTemplate)
+        connectivity = params["connectivity"]
+
+        for frameNum in tqdm(allFramesNum, desc="Analyzing drops"):
+            labelImg, count, imgShape = imgSegmentation(binaryFrameDir_pathObj, frameNameTemplate, frameNum, connectivity)
+            
+            frame = Frame()
+            frame.setFrameNumber(frameNum)
+            frame.setObjectCount(count)
+
+            for objLabel in range(1, count+1):
+                rows, cols = np.where(labelImg == objLabel)
+                # Origin at bottom left corner
+                topLft_y = imgShape[0] - np.min(rows)
+                topLft_x = np.min(cols)
+                objInd = objLabel - 1
+
+                obj = Object(frameNum, objInd, topLft_x, topLft_y, len(rows), rows, cols)
+                frame.addObject(obj)
+            
+            video.addFrame(frame)
+        
+        if not video.isVideoContinuous():
+            logging.error("Video frames are not continuous. Analysis aborted.")
+            raise SystemExit("Video is not continuous. Exiting...")
+            
+        return video
+    
+    def saveBubblesToTextFile(self, saveDir_pathObj: Path):
         """
         Save bubble data to a JSON file.
         """
@@ -77,7 +131,7 @@ class Video:
 
         logging.info("Bubbles saved to %s in JSON format.", savePath)
     
-    def loadBubblesFromTextFile(self, loadDir_pathObj):
+    def loadBubblesFromTextFile(self, loadDir_pathObj: Path):
         """
         Load bubble data (including trajectory, velocities, and accelerations) from a JSON file.
         """
@@ -117,7 +171,7 @@ class Video:
         logging.info("Loaded %d bubbles from %s (JSON format).", numBubbles, loadPath)
     
 
-    def saveFramesToTextFile(self, saveDir_pathObj):
+    def saveFramesToTextFile(self, saveDir_pathObj: Path):
         """
         Save frames data (including objects) to a JSON file.
         """
@@ -160,7 +214,7 @@ class Video:
 
         logging.info("Frames saved to %s in JSON format.", savePath)
 
-    def loadFramesFromTextFile(self, loadDir_pathObj):
+    def loadFramesFromTextFile(self, loadDir_pathObj: Path):
         """
         Load frames data (including objects) from a JSON file.
         """
@@ -209,13 +263,13 @@ class Video:
         else:
             logging.info("Loaded %d frames from %s (JSON format).", numFrames, loadPath)
 
-    def checkVideoFramesFileExists(self, loadDir_pathObj):
+    def checkVideoFramesFileExists(self, loadDir_pathObj: Path):
         return (loadDir_pathObj / 'videoFrames.txt').exists()
     
-    def checkVideoBubblesFileExists(self, loadDir_pathObj):
+    def checkVideoBubblesFileExists(self, loadDir_pathObj: Path):
         return (loadDir_pathObj / 'videoBubbles.txt').exists()
 
-    def getFrameIndexFromNumber(self, frameNumber):
+    def getFrameIndexFromNumber(self, frameNumber: int):
         """
         Convert a frame number to its index based on the first frame number.
         """
@@ -223,17 +277,17 @@ class Video:
         frameIndex = frameNumber - startFrameNumber
         return frameIndex
 
-    def getObjectFromFrameAndObjectIndex(self, frameIndex, objectIndex):
+    def getObjectFromFrameAndObjectIndex(self, frameIndex: int, objectIndex: int):
         return self.frames[frameIndex].getObject(objectIndex)
 
-    def getObjectFromBubbleLoc(self, bubbleLocation):
+    def getObjectFromBubbleLoc(self, bubbleLocation: list):
         frameNumber = bubbleLocation[0]
         objectIndex = bubbleLocation[1]
         frameIndex = self.getFrameIndexFromNumber(frameNumber)
         return self.getObjectFromFrameAndObjectIndex(frameIndex, objectIndex)
 
     def getLatestBubbleObject(self, bubbleListIndex):
-        bubble = self.bubbles[bubbleListIndex]
+        bubble: Bubble = self.bubbles[bubbleListIndex]
         latestLocation = bubble.getLatestLocation()
         return self.getObjectFromBubbleLoc(latestLocation)
 
@@ -275,7 +329,7 @@ class Video:
             frameCopy = frame.copy()
             for listInd in range(len(self.bubbles)):
                 bubble = self.bubbles[listInd]
-                latestObj = self.getLatestBubbleObject(listInd)
+                latestObj: Object = self.getLatestBubbleObject(listInd)
                 objFrameNum = latestObj.getFrameNumber()
 
                 # Check frame consecutiveness
@@ -284,7 +338,7 @@ class Video:
 
                 closestObjsInd = frameCopy.getNearbyAndComparableSizeObjectIndices_object(latestObj, distanceThreshold, sizeThresholdPercent)
                 if closestObjsInd:
-                    closestObj = frameCopy.getObject(closestObjsInd[0])
+                    closestObj: Object = frameCopy.getObject(closestObjsInd[0])
                     bubble.appendTrajectory(frameCopy.getFrameNumber(), closestObj.getObjectIndex())
                     frameCopy.removeObject_index(closestObjsInd[0])
 
@@ -303,22 +357,9 @@ class Video:
 
         # Compute velocities and accelerations for each bubble
         for bubble in self.bubbles:
-            bubble.computeVelocitiesAndAccelerations(self, fps)
+            self.computeVelocitiesAndAccelerations(bubble, fps)
 
         logging.info("Tracking completed. Number of bubbles: %d", len(self.bubbles))
-
-
-    def getPositionAndSizeArrayFromTrajectory(self, trajectory):
-        """
-        Given a trajectory, return arrays for position (N x 2) and size (N).
-        """
-        position = np.zeros((len(trajectory), 2), dtype=int)
-        size = np.zeros(len(trajectory), dtype=int)
-        for i, loc in enumerate(trajectory):
-            obj = self.getObjectFromBubbleLoc(loc)
-            position[i, :] = obj.getPosition()
-            size[i] = obj.getSize()
-        return position, size
 
     def app2_plotTrajectory(self, bubbleListIndices, binaryFrameDir_pathObj, videoFramesDir_pathObj, fps, frameNameTemplate):
         """
@@ -378,9 +419,9 @@ class Video:
             logging.warning("Bubble index %d out of range.", bubbleListIndex)
             return False
 
-        bubble = self.bubbles[bubbleListIndex]
+        bubble: Bubble = self.bubbles[bubbleListIndex]
         trajectory = bubble.getFullTrajectory()
-        position, size = self.getPositionAndSizeArrayFromTrajectory(trajectory)
+        position, size = self.getPositionAndSizeArrayFromTrajectory( bubble)
         color = self.getColor(bubbleListIndex)
 
         # Use the first frame to get dimensions
@@ -435,7 +476,7 @@ class Video:
             logging.error("Invalid bubble index %d", bubbleIndex)
             return
         
-        bubble = self.bubbles[bubbleIndex]
+        bubble: Bubble = self.bubbles[bubbleIndex]
         trajectory = bubble.getFullTrajectory()
 
         if len(trajectory) == 0:
@@ -443,7 +484,7 @@ class Video:
             return
 
         # Extract frame numbers and positions
-        position, _ = self.getPositionAndSizeArrayFromTrajectory(trajectory)
+        position, _ = self.getPositionAndSizeArrayFromTrajectory( bubble )
         frameNumbers = [loc[0] for loc in trajectory]
 
         # position is Nx2 (x,y)
@@ -511,7 +552,6 @@ class Video:
         outDir_pathObj.mkdir(parents=True, exist_ok=True)
         plotPath = outDir_pathObj / f"bubble_{bubble.getBubbleIndex()}_kinematics.png"
         plt.savefig(str(plotPath), dpi=300)
-        logging.info("Kinematics plot saved at %s", plotPath)
         plt.close(fig)
 
     def isVideoContinuous(self):
@@ -523,7 +563,7 @@ class Video:
                 return False
         return True
 
-    def isSame(self, video):
+    def isSame(self, video: 'Video'):
         """
         Check if another video object contains the same frames and bubbles.
         """
@@ -559,6 +599,75 @@ class Video:
         colorHex = colorsList[val]
         colorRGB = ImageColor.getcolor(colorHex, "RGB")
         return colorRGB
+    
+    def computeVelocitiesAndAccelerations(self, bubble: 'Bubble', fps) -> None:
+        """
+        Compute velocities and accelerations from the stored trajectory.
+
+        Parameters
+        ----------
+        bubble : Bubble
+            The Bubble object for which to compute velocities and accelerations.
+        """
+        trajectory = bubble.getFullTrajectory()
+        if len(trajectory) < 2:
+            # Not enough data points to compute velocity
+            bubble.velocities = np.array([])
+            bubble.accelerations = np.array([])
+            logging.warning(f"Not enough data points to compute velocity for Bubble {bubble.id}.")
+            return
+        
+        # Get positions (x, y) for each point in the trajectory
+        position, _ = self.getPositionAndSizeArrayFromTrajectory(bubble)  # position is Nx2 array
+        
+        # Compute velocities
+        # v[i] = (pos[i+1] - pos[i]) * fps
+        vel = (position[1:] - position[:-1]) * fps  # (N-1)x2 array
+        bubble.velocities = vel
+
+        if len(trajectory) < 3:
+            # Not enough points to compute acceleration
+            bubble.accelerations = np.array([])
+            logging.warning(f"Not enough data points to compute acceleration for Bubble {bubble.bubbleIndex}.")
+            return
+
+        # Compute accelerations
+        # a[i] = (v[i+1] - v[i]) * fps
+        acc = (vel[1:] - vel[:-1]) * fps  # (N-2)x2 array
+        bubble.accelerations = acc
+
+        logging.debug(f"Computed velocities and accelerations for Bubble {bubble.bubbleIndex}.")
+        
+    def getPositionAndSizeArrayFromTrajectory(self, bubble: 'Bubble') -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Given a trajectory, return arrays for position (N x 2) and size (N).
+
+        Parameters
+        ----------
+        bubble : Bubble
+            The Bubble object whose trajectory is to be processed.
+
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray]
+            A tuple containing:
+            - position: Nx2 array of (x, y) positions.
+            - size: N array of sizes.
+        """
+        trajectory = bubble.getFullTrajectory()
+        position = np.zeros((len(trajectory), 2), dtype=int)
+        size = np.zeros(len(trajectory), dtype=int)
+        for i, loc in enumerate(trajectory):
+            try:
+                obj = self.getObjectFromBubbleLoc(loc)
+                position[i, :] = obj.getPosition()
+                size[i] = obj.getSize()
+            except ValueError as e:
+                logging.error(f"Error retrieving object for trajectory location {loc}: {e}")
+                position[i, :] = [np.nan, np.nan]  # Assign NaN for missing positions
+                size[i] = 0  # Assign 0 for missing sizes
+        return position, size
+
 
 
 def convert_to_builtin_types(obj):

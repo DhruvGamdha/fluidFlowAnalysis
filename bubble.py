@@ -1,4 +1,3 @@
-import numpy as np
 
 class Bubble:
     """
@@ -12,7 +11,7 @@ class Bubble:
         Unique index identifying the bubble.
     """
 
-    def __init__(self, bubbleIndex):
+    def __init__(self, bubbleIndex: int):
         self.trajectory = []
         self.bubbleIndex = bubbleIndex
         self.velocities = None     # Will be a Nx2 array (vx, vy)
@@ -51,43 +50,7 @@ class Bubble:
                 return False
         return True
 
-    def isSame(self, bubble):
+    def isSame(self, bubble: 'Bubble'):
         cond1 = self.bubbleIndex == bubble.getBubbleIndex()
         cond2 = self.trajectory == bubble.getFullTrajectory()
         return cond1 and cond2
-    
-    def computeVelocitiesAndAccelerations(self, video, fps):
-        """
-        Compute velocities and accelerations from the stored trajectory.
-        
-        Parameters
-        ----------
-        video : Video
-            The Video object that can provide positions for the bubble trajectory.
-        fps : float
-            Frames per second of the video, used to convert frame-to-frame differences into velocities/accelerations.
-        """
-        trajectory = self.getFullTrajectory()
-        if len(trajectory) < 2:
-            # Not enough data points to compute velocity
-            self.velocities = np.array([])
-            self.accelerations = np.array([])
-            return
-        
-        # Get positions (x, y) for each point in the trajectory
-        position, _ = video.getPositionAndSizeArrayFromTrajectory(trajectory)  # position is Nx2 array
-        
-        # Compute velocities
-        # v[i] = (pos[i+1] - pos[i]) * fps
-        vel = (position[1:] - position[:-1]) * fps  # (N-1)x2 array
-        self.velocities = vel
-
-        if len(trajectory) < 3:
-            # Not enough points to compute acceleration
-            self.accelerations = np.array([])
-            return
-
-        # Compute accelerations
-        # a[i] = (v[i+1] - v[i]) * fps
-        acc = (vel[1:] - vel[:-1]) * fps  # (N-2)x2 array
-        self.accelerations = acc

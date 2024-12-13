@@ -1,5 +1,8 @@
 import numpy as np
 import logging
+from object import Object
+from typing import List
+import matplotlib.pyplot as plt
 
 class Frame:
     """
@@ -18,7 +21,7 @@ class Frame:
     def __init__(self):
         self.frameNumber = None
         self.objCount = None
-        self.objects = []
+        self.objects: List[Object] = []
 
     def setFrameNumber(self, frameNumber):
         self.frameNumber = frameNumber
@@ -54,7 +57,7 @@ class Frame:
         except IndexError:
             logging.warning("Attempted to remove invalid object index %d.", objectIndex)
 
-    def getNearbyObjectIndices_object(self, obj, distance):
+    def getNearbyObjectIndices_object(self, obj: Object, distance):
         """
         Returns indices of objects within a certain distance of the given object's position, sorted by distance.
         """
@@ -66,7 +69,7 @@ class Frame:
         # Sort by distance
         return [k for k, v in sorted(objectsIndices.items(), key=lambda item: item[1])]
 
-    def getComparableSizeObjectIndices_object(self, obj, sizeThresholdPercent):
+    def getComparableSizeObjectIndices_object(self, obj: Object, sizeThresholdPercent):
         """
         Returns indices of objects with sizes within a certain percentage threshold of the given object's size, sorted by size.
         """
@@ -78,7 +81,7 @@ class Frame:
 
         return [k for k, v in sorted(objectsIndices.items(), key=lambda item: item[1])]
 
-    def getNearbyAndComparableSizeObjectIndices_object(self, obj, distance, sizeThresholdPercent):
+    def getNearbyAndComparableSizeObjectIndices_object(self, obj: Object, distance, sizeThresholdPercent):
         nearbyObjectsIndices = self.getNearbyObjectIndices_object(obj, distance)
         comparableSizeObjectsIndices = self.getComparableSizeObjectIndices_object(obj, sizeThresholdPercent)
 
@@ -108,7 +111,7 @@ class Frame:
             newFrame.addObject(obj)
         return newFrame
 
-    def isSame(self, frame):
+    def isSame(self, frame: 'Frame'):
         """
         Check if another Frame is the same as this one.
         """
@@ -122,3 +125,58 @@ class Frame:
             if not self.objects[i].isSame(frame.getObject(i)):
                 return False
         return True
+    
+    def plotFrameObjectAnalysis(self, frameNum, numBubbles, imgShape, analysisBaseDir_pathObj, frameNameTemplate):
+        """
+        Plot and save bubble size and position analysis results for a given frame.
+
+        Parameters
+        ----------
+        frameObj : Frame
+            Frame object containing bubble (object) information.
+        frameNum : int
+            Frame number.
+        numBubbles : int
+            Number of detected bubbles in the frame.
+        imgShape : tuple
+            Shape of the image (height, width).
+        analysisBaseDir_pathObj : pathlib.Path
+            Base directory for analysis output.
+        frameNameTemplate : str
+            Template for naming output plots.
+        """
+        _, bubble_vertPos = self.getObjectPositionList()
+        bubble_pixSize = self.getObjectSizeList()
+
+        # Plot bubble pixel sizes
+        plt.figure()
+        plt.plot(bubble_pixSize)
+        plt.xlabel("Bubble Number")
+        plt.ylabel("Bubble Pixel Size")
+        plt.title(f"Bubble sizes in frame number: {frameNum}")
+        plt.xlim(0, 50)
+        plt.ylim(0, 1000)
+        plt.savefig(analysisBaseDir_pathObj / "pixSize" / "frames" / frameNameTemplate.format(frameNum), dpi=200)
+        plt.close()
+
+        # Plot bubble vertical positions
+        plt.figure()
+        plt.scatter(range(1, numBubbles+1), bubble_vertPos)
+        plt.xlabel("Bubble Number")
+        plt.ylabel("Bubble Vertical Position")
+        plt.title(f"Bubble positions in frame number: {frameNum}")
+        plt.xlim(0, 50)
+        plt.ylim(0, imgShape[0])
+        plt.savefig(analysisBaseDir_pathObj / "vertPos" / "frames" / frameNameTemplate.format(frameNum), dpi=200)
+        plt.close()
+
+        # Plot bubble vertical positions with marker size based on bubble size
+        plt.figure()
+        plt.scatter(range(1, numBubbles+1), bubble_vertPos, s=bubble_pixSize)
+        plt.xlabel("Bubble Number")
+        plt.ylabel("Bubble Vertical Position")
+        plt.title(f"Bubble positions in frame number: {frameNum}")
+        plt.xlim(0, 50)
+        plt.ylim(0, imgShape[0])
+        plt.savefig(analysisBaseDir_pathObj / "dynamicMarker" / "frames" / frameNameTemplate.format(frameNum), dpi=200)
+        plt.close('all')

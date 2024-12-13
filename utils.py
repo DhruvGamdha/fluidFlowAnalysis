@@ -2,14 +2,9 @@ import logging
 import cv2
 import numpy as np
 from tqdm import tqdm
-import matplotlib.pyplot as plt
 import skimage.measure as skm
 import pathlib as pl
 import parse
-
-from object import Object
-from frame import Frame
-from video import Video
 
 def readAndSaveVid(videoFramesPathObj, videoFormat, frameNameTemplate, rotate=False):
     """
@@ -79,6 +74,7 @@ def cropFrames(origFrameDir_pathObj, croppedFrameDir_pathObj, frameNameTemplate,
     logging.info("Cropping frames. Existing frames in %s may be overwritten.", str(croppedFrameDir_pathObj))
     top, bottom, left, right = params["top"], params["bottom"], params["left"], params["right"]
     
+    frame = cv2.imread(str(origFrameDir_pathObj / frameNameTemplate.format(allFramesNum[0])), 0)
     # if crop values are zero or invalid, set the crop parameters to the full frame
     if (top == bottom == left == right == 0 
         or top >= bottom 
@@ -92,7 +88,6 @@ def cropFrames(origFrameDir_pathObj, croppedFrameDir_pathObj, frameNameTemplate,
         or bottom > frame.shape[0]
         or right > frame.shape[1]):
         logging.warning("Invalid crop parameters. Using full frame.")
-        frame = cv2.imread(str(origFrameDir_pathObj / frameNameTemplate.format(allFramesNum[0])), 0)
         top, bottom, left, right = 0, frame.shape[0], 0, frame.shape[1]
     
     for frameNum in allFramesNum:
@@ -293,55 +288,6 @@ def checkVideoFileExists(videoDir_pathObj, videType):
 
     return videoPath.exists()
 
-def dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, frameNameTemplate, params):
-    """
-    Perform analysis on the binary frames to identify objects (bubbles) and their properties.
-
-    Parameters
-    ----------
-    binaryFrameDir_pathObj : pathlib.Path
-        Directory containing binary frames.
-    analysisBaseDir_pathObj : pathlib.Path
-        Base directory for saving analysis results.
-    frameNameTemplate : str
-        Template for naming frames.
-    params : dict
-        Configuration parameters, including 'connectivity'.
-
-    Returns
-    -------
-    Video
-        A Video object populated with Frame and Object data.
-    """
-    video = Video()
-    allFramesNum = getFrameNumbers_ordered(binaryFrameDir_pathObj, frameNameTemplate)
-    connectivity = params["connectivity"]
-
-    for frameNum in tqdm(allFramesNum, desc="Analyzing drops"):
-        labelImg, count, imgShape = imgSegmentation(binaryFrameDir_pathObj, frameNameTemplate, frameNum, connectivity)
-        
-        frame = Frame()
-        frame.setFrameNumber(frameNum)
-        frame.setObjectCount(count)
-
-        for objLabel in range(1, count+1):
-            rows, cols = np.where(labelImg == objLabel)
-            # Origin at bottom left corner
-            topLft_y = imgShape[0] - np.min(rows)
-            topLft_x = np.min(cols)
-            objInd = objLabel - 1
-
-            obj = Object(frameNum, objInd, topLft_x, topLft_y, len(rows), rows, cols)
-            frame.addObject(obj)
-        
-        video.addFrame(frame)
-    
-    if not video.isVideoContinuous():
-        logging.error("Video frames are not continuous. Analysis aborted.")
-        raise SystemExit("Video is not continuous. Exiting...")
-        
-    return video
-
 def imgSegmentation(binaryFrameDir_pathObj, nameTemplate, frameNum, connectivity):
     """
     Segment a binary frame into labeled objects.
@@ -377,7 +323,7 @@ def imgSegmentation(binaryFrameDir_pathObj, nameTemplate, frameNum, connectivity
     labelImg, count = skm.label(img, connectivity=connectivity, return_num=True)
     return labelImg, count, imgShape
 
-def getFrameNumbers_ordered(framePathObj, nameTemplate, exitOnFail=True):
+def getFrameNumbers_ordered(framePathObj: pl.Path, nameTemplate, exitOnFail=True):
     """
     Retrieve and sort frame numbers from files in a directory, checking continuity.
 
@@ -421,7 +367,7 @@ def getFrameNumbers_ordered(framePathObj, nameTemplate, exitOnFail=True):
     
     return allFramesNum
 
-def DoNumExistingFramesMatch(frameDir_pathObj, numFramesToCreate):
+def DoNumExistingFramesMatch(frameDir_pathObj: pl.Path, numFramesToCreate):
     """
     Check if the number of existing frames in a directory matches the expected number.
 
@@ -443,58 +389,3 @@ def DoNumExistingFramesMatch(frameDir_pathObj, numFramesToCreate):
                      numExistingFile, frameDir_pathObj)
         return True
     return False
-
-def plotFrameObjectAnalysis(frameObj, frameNum, numBubbles, imgShape, analysisBaseDir_pathObj, frameNameTemplate):
-    """
-    Plot and save bubble size and position analysis results for a given frame.
-
-    Parameters
-    ----------
-    frameObj : Frame
-        Frame object containing bubble (object) information.
-    frameNum : int
-        Frame number.
-    numBubbles : int
-        Number of detected bubbles in the frame.
-    imgShape : tuple
-        Shape of the image (height, width).
-    analysisBaseDir_pathObj : pathlib.Path
-        Base directory for analysis output.
-    frameNameTemplate : str
-        Template for naming output plots.
-    """
-    _, bubble_vertPos = frameObj.getObjectPositionList()
-    bubble_pixSize = frameObj.getObjectSizeList()
-
-    # Plot bubble pixel sizes
-    plt.figure()
-    plt.plot(bubble_pixSize)
-    plt.xlabel("Bubble Number")
-    plt.ylabel("Bubble Pixel Size")
-    plt.title(f"Bubble sizes in frame number: {frameNum}")
-    plt.xlim(0, 50)
-    plt.ylim(0, 1000)
-    plt.savefig(analysisBaseDir_pathObj / "pixSize" / "frames" / frameNameTemplate.format(frameNum), dpi=200)
-    plt.close()
-
-    # Plot bubble vertical positions
-    plt.figure()
-    plt.scatter(range(1, numBubbles+1), bubble_vertPos)
-    plt.xlabel("Bubble Number")
-    plt.ylabel("Bubble Vertical Position")
-    plt.title(f"Bubble positions in frame number: {frameNum}")
-    plt.xlim(0, 50)
-    plt.ylim(0, imgShape[0])
-    plt.savefig(analysisBaseDir_pathObj / "vertPos" / "frames" / frameNameTemplate.format(frameNum), dpi=200)
-    plt.close()
-
-    # Plot bubble vertical positions with marker size based on bubble size
-    plt.figure()
-    plt.scatter(range(1, numBubbles+1), bubble_vertPos, s=bubble_pixSize)
-    plt.xlabel("Bubble Number")
-    plt.ylabel("Bubble Vertical Position")
-    plt.title(f"Bubble positions in frame number: {frameNum}")
-    plt.xlim(0, 50)
-    plt.ylim(0, imgShape[0])
-    plt.savefig(analysisBaseDir_pathObj / "dynamicMarker" / "frames" / frameNameTemplate.format(frameNum), dpi=200)
-    plt.close('all')
