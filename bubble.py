@@ -112,3 +112,15 @@ class Bubble:
             if self.trajectory[i][0] == frameNumber:
                 return self.positions[i]
         return None
+    
+    def getVelocity_atFrameNumber(self, frameNumber):
+        for i in range(len(self.trajectory) - 1):
+            if self.trajectory[i][0] == frameNumber:
+                return self.velocities[i]
+        return None
+    
+    def getAcceleration_atFrameNumber(self, frameNumber):
+        for i in range(len(self.trajectory) - 2):
+            if self.trajectory[i][0] == frameNumber:
+                return self.accelerations[i]
+        return None

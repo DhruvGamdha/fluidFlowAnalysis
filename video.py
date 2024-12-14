@@ -380,7 +380,7 @@ class Video:
             trajectory = bubble.getFullTrajectory()
             color = self.getColor(colorIndex)
             colorIndex += 1
-            for loc in trajectory:
+            for i, loc in enumerate(trajectory):
                 obj = self.getObjectFromBubbleLoc(loc)
                 rows, cols = obj.getAllPixelLocs()
                 frameNum = loc[0]
@@ -395,8 +395,42 @@ class Video:
                     logging.warning("Frame %s not found or not readable.", frameName)
                     continue
                 frame[rows, cols, :] = color
-                cv2.putText(frame, str(frameNum), (frame.shape[1] - 30, 70),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.25, (0, 0, 0), 1, cv2.LINE_AA)
+                cv2.putText(frame, 
+                            str(frameNum), 
+                            (frame.shape[1] - 30, 70),
+                            cv2.FONT_HERSHEY_SIMPLEX, 
+                            0.25, 
+                            (0, 0, 0), 
+                            1, 
+                            cv2.LINE_AA)
+                
+                # Draw the bubble position on the frame
+                bubblePos = bubble.getPosition_atFrameNumber(frameNum)
+                if bubblePos is not None:
+                    cv2.circle(frame, 
+                               (int(bubblePos[0]), int(bubblePos[1])), 
+                               5, 
+                               (0, 0, 255), 
+                               -1)
+                
+                # Draw bubble velocity vector
+                bubbleVel = bubble.getVelocity_atFrameNumber(frameNum)
+                if bubbleVel is not None:
+                    cv2.arrowedLine(frame, 
+                                    (int(bubblePos[0]), int(bubblePos[1])),
+                                    (int(bubblePos[0] + bubbleVel[0]), int(bubblePos[1] + bubbleVel[1])),
+                                    (0, 255, 0), 
+                                    2)
+                
+                # Draw bubble acceleration vector
+                bubbleAcc = bubble.getAcceleration_atFrameNumber(frameNum)
+                if bubbleAcc is not None:
+                    cv2.arrowedLine(frame, 
+                                    (int(bubblePos[0]), int(bubblePos[1])),
+                                    (int(bubblePos[0] + bubbleAcc[0]), int(bubblePos[1] + bubbleAcc[1])),
+                                    (255, 0, 0), 
+                                    2)
+                
                 cv2.imwrite(str(framePath), frame)
 
         if DoNumExistingFramesMatch(videoFramesDir_pathObj, self.getNumFrames()):
