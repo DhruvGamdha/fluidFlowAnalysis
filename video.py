@@ -10,7 +10,7 @@ import json
 from object import Object
 from frame import Frame
 from bubble import Bubble
-from utils import getFrameNumbers_ordered, imgSegmentation, calculatePixelCentroid
+from utils import getFrameNumbers_ordered, imgSegmentation, calculatePixelCentroid, DoNumExistingFramesMatch
 
 from typing import List, Tuple
 
@@ -29,6 +29,8 @@ class Video:
     def __init__(self):
         self.frames: List[Frame] = []
         self.bubbles: List[Bubble] = []
+        self.frameHeight = 0
+        self.frameWidth = 0
 
     def addFrame(self, frame: Frame):
         """
@@ -50,6 +52,18 @@ class Video:
 
     def getNumBubbles(self):
         return len(self.bubbles)
+    
+    def getFrameHeight(self):
+        return self.frameHeight
+    
+    def setFrameHeight(self, height):
+        self.frameHeight = height
+    
+    def getFrameWidth(self):
+        return self.frameWidth
+    
+    def setFrameWidth(self, width):
+        self.frameWidth = width
     
     @classmethod
     def dropAnalysis(cls, binaryFrameDir_pathObj: Path, analysisBaseDir_pathObj: Path, frameNameTemplate: str, params: dict) -> 'Video':
@@ -76,6 +90,12 @@ class Video:
         video = cls()
         allFramesNum = getFrameNumbers_ordered(binaryFrameDir_pathObj, frameNameTemplate)
         connectivity = params["connectivity"]
+        
+        # Write the frame dimensions to the video object
+        frame0 = cv2.imread(str(binaryFrameDir_pathObj / frameNameTemplate.format(allFramesNum[0])))
+        if frame0 is not None:
+            video.setFrameHeight(frame0.shape[0])
+            video.setFrameWidth(frame0.shape[1])
 
         for frameNum in tqdm(allFramesNum, desc="Analyzing drops"):
             labelImg, count, imgShape = imgSegmentation(binaryFrameDir_pathObj, frameNameTemplate, frameNum, connectivity)
@@ -183,6 +203,8 @@ class Video:
         
         data = {
             "numFrames": self.getNumFrames(),
+            "frameHeight": self.getFrameHeight(),
+            "frameWidth": self.getFrameWidth(),
             "frames": []
         }
 
@@ -233,6 +255,9 @@ class Video:
         data = convert_to_builtin_types(data)
 
         numFrames = data.get("numFrames", 0)
+        self.setFrameHeight(data.get("frameHeight", 0))
+        self.setFrameWidth(data.get("frameWidth", 0))
+        
         framesList = data.get("frames", [])
 
         self.frames = []
@@ -375,35 +400,46 @@ class Video:
         Mark bubbles on frames and save the resulting frames in videoFramesDir_pathObj.
         If frames are missing, fill them from the binaryFrameDir_pathObj.
         """
-        from utils import getFrameNumbers_ordered, DoNumExistingFramesMatch
+        # from utils import getFrameNumbers_ordered, DoNumExistingFramesMatch
 
         colorIndex = 0
-        for bubbleListIndex in tqdm(bubbleListIndices, desc='Creating frames'):
-            bubble = self.bubbles[bubbleListIndex]
+        for bubbleListIndex in tqdm(bubbleListIndices, desc='Processing Bubbles'):
+            bubble: Bubble = self.bubbles[bubbleListIndex]
             trajectory = bubble.getFullTrajectory()
             color = self.getColor(colorIndex)
             colorIndex += 1
-            for i, loc in enumerate(trajectory):
-                obj = self.getObjectFromBubbleLoc(loc)
+            
+            # Iterate through each point in the bubble's trajectory
+            for loc in trajectory:
+                frame_num, object_index = loc
+                
+                # Retrieve the corresponding object
+                obj:Object = self.getObjectFromBubbleLoc(loc)
+                if obj is None:
+                    logging.warning("Object not found for bubble %d at frame %d and object index %d", bubbleListIndex, frame_num, object_index)
+                    continue
+                
                 rows, cols = obj.getAllPixelLocs()
-                frameNum = loc[0]
-                frameName = frameNameTemplate.format(frameNum)
+                
+                # Construct frame filename and path
+                frameName = frameNameTemplate.format(frame_num)
                 framePath = videoFramesDir_pathObj / frameName
+                
+                # Load the existing frame or create a new one if missing
                 if framePath.exists():
                     frame = cv2.imread(str(framePath))
+                    if frame is None:
+                        logging.warning(f"Failed to read existing frame {framePath}. Creating a blank frame.")
+                        exit(1)
+                        
                 else:
-                    # Read the binary frame to get dimensions
-                    frame = cv2.imread(str(binaryFrameDir_pathObj / frameName))
-                    # Create blank white background frame of the same size
-                    frame = np.zeros((frame.shape[0], frame.shape[1], 3), dtype=np.uint8)
+                    frame = np.zeros((self.getFrameHeight(), self.getFrameWidth(), 3), dtype=np.uint8)
                     frame.fill(255)
-
-                if frame is None:
-                    logging.warning("Frame %s not found or not readable.", frameName)
-                    continue
+                
                 frame[rows, cols, :] = color
+                
                 cv2.putText(frame, 
-                            str(frameNum), 
+                            str(frame_num), 
                             (frame.shape[1] - 30, 70),
                             cv2.FONT_HERSHEY_SIMPLEX, 
                             0.25, 
@@ -412,51 +448,79 @@ class Video:
                             cv2.LINE_AA)
                 
                 # Draw the bubble position on the frame
-                if params.get('drawBubblePosition', False):
-                    bubblePos = bubble.getPosition_atFrameNumber(frameNum)
+                bubblePos = None
+                if params.get('drawBubblePosition', False) or params.get('drawBubbleVelocity', False) or params.get('drawBubbleAcceleration', False):
+                    bubblePos = bubble.getPosition_atFrameNumber(frame_num)
                     if bubblePos is not None:
-                        cv2.circle( frame, 
-                                    (int(bubblePos[0]), int(bubblePos[1])), 
-                                    2,  # radius 
-                                    (0, 0, 255), 
-                                    -1) # fill circle
+                        bubblePos = (int(bubblePos[0]), int(bubblePos[1]))
+                
+                if params.get('drawBubblePosition', False) and bubblePos is not None:
+                    cv2.circle( frame, 
+                                bubblePos, 
+                                radius = 2, 
+                                color = (0, 0, 255), 
+                                thickness = -1)
                 
                 # Draw bubble velocity vector
-                if params.get('drawBubbleVelocity', False):
-                    bubbleVel = bubble.getVelocity_atFrameNumber(frameNum)
+                if params.get('drawBubbleVelocity', False) and bubblePos is not None:
+                    bubbleVel = bubble.getVelocity_atFrameNumber(frame_num)
                     if bubbleVel is not None:
+                        end_point = (int(bubblePos[0] + bubbleVel[0]), 
+                                    int(bubblePos[1] + bubbleVel[1]))
                         cv2.arrowedLine(frame, 
-                                        (int(bubblePos[0]), int(bubblePos[1])),
-                                        (int(bubblePos[0] + bubbleVel[0]), int(bubblePos[1] + bubbleVel[1])),
-                                        (0, 255, 0), 
-                                        1)  # color, thicknessß
+                                        bubblePos,
+                                        end_point,
+                                        color = (0, 255, 0), 
+                                        thickness = 1,
+                                        tipLength = 0.2) 
                 
                 # Draw bubble acceleration vector
-                if params.get('drawBubbleAcceleration', False):
-                    bubbleAcc = bubble.getAcceleration_atFrameNumber(frameNum)
+                if params.get('drawBubbleAcceleration', False) and bubblePos is not None:
+                    bubbleAcc = bubble.getAcceleration_atFrameNumber(frame_num)
                     if bubbleAcc is not None:
+                        end_point = (int(bubblePos[0] + bubbleAcc[0]),
+                                    int(bubblePos[1] + bubbleAcc[1]))
                         cv2.arrowedLine(frame, 
-                                        (int(bubblePos[0]), int(bubblePos[1])),
-                                        (int(bubblePos[0] + bubbleAcc[0]), int(bubblePos[1] + bubbleAcc[1])),
-                                        (255, 0, 0),
-                                        1)
+                                        bubblePos,
+                                        end_point,
+                                        color=(255, 0, 0),
+                                        thickness = 1,
+                                        tipLength = 0.2)
                 
-                cv2.imwrite(str(framePath), frame)
+                success = cv2.imwrite(str(framePath), frame)
+                if not success:
+                    logging.warning("Failed to write frame %s.", frameName)
 
         if DoNumExistingFramesMatch(videoFramesDir_pathObj, self.getNumFrames()):
+            logging.info("All frames are present. No missing frames to add.")
+            logging.info("Trajectory plotting completed without missing frames.")
             return
 
+        logging.warning("Some frames are missing. Adding missing frames...")
         # Fill missing frames
-        incompleteFrameNums = getFrameNumbers_ordered(videoFramesDir_pathObj, frameNameTemplate, False)
-        missingFrameNums = list(set(range(self.getNumFrames())) - set(incompleteFrameNums))
-        for missingFrameNum in tqdm(missingFrameNums, desc='Adding missing frames'):
-            frameName = frameNameTemplate.format(missingFrameNum)
-            framePath = binaryFrameDir_pathObj / frameName
-            frame = cv2.imread(str(framePath))
-            if frame is None:
-                logging.warning("Missing frame %s not found in binary directory.", frameName)
-                continue
-            cv2.imwrite(str(videoFramesDir_pathObj / frameName), frame)
+        existing_frame_nums = getFrameNumbers_ordered(videoFramesDir_pathObj, frameNameTemplate, False)
+        total_frames = self.getNumFrames()
+        missing_frame_nums = sorted(list(set(range(total_frames)) - set(existing_frame_nums)))
+        
+        # Add missing frames by copying from binaryFrameDir or creating blank frame
+        for missing_frame_num in tqdm(missing_frame_nums, desc='Adding missing frames'):
+            frameName = frameNameTemplate.format(missing_frame_num)
+            binaryFramePath = binaryFrameDir_pathObj / frameName
+            frame = cv2.imread(str(binaryFramePath))
+            if frame is not None:
+                # Save the existing binary frame to videoFramesDir
+                success = cv2.imwrite(str(videoFramesDir_pathObj / frameName), frame)
+                if not success:
+                    logging.warning(f"Failed to write missing frame {frameName} from binary directory.")
+            else:
+                # Create and save a blank white frame if binary frame is missing
+                logging.warning(f"Missing frame {frameName} not found in binary directory. Creating a blank frame.")
+                blank_frame = np.full((self.getFrameHeight(), self.getFrameWidth(), 3), 255, dtype=np.uint8)
+                success = cv2.imwrite(str(videoFramesDir_pathObj / frameName), blank_frame)
+                if not success:
+                    logging.warning(f"Failed to write blank frame {frameName}.")
+                    
+        logging.info("Trajectory plotting completed with MISSING FRAMES ADDED.")
 
     def plotTrajectory(self, bubbleListIndex, binaryFrameDir_pathObj, videoDir_pathObj, fps, frameNameTemplate):
         """
