@@ -364,7 +364,13 @@ class Video:
 
         logging.info("Tracking completed. Number of bubbles: %d", len(self.bubbles))
 
-    def app2_plotTrajectory(self, bubbleListIndices, binaryFrameDir_pathObj, videoFramesDir_pathObj, fps, frameNameTemplate):
+    def app2_plotTrajectory(self, 
+                            bubbleListIndices, 
+                            binaryFrameDir_pathObj, 
+                            videoFramesDir_pathObj, 
+                            fps, 
+                            frameNameTemplate,
+                            params: dict):
         """
         Mark bubbles on frames and save the resulting frames in videoFramesDir_pathObj.
         If frames are missing, fill them from the binaryFrameDir_pathObj.
@@ -405,31 +411,34 @@ class Video:
                             cv2.LINE_AA)
                 
                 # Draw the bubble position on the frame
-                bubblePos = bubble.getPosition_atFrameNumber(frameNum)
-                if bubblePos is not None:
-                    cv2.circle(frame, 
-                               (int(bubblePos[0]), int(bubblePos[1])), 
-                               5, 
-                               (0, 0, 255), 
-                               -1)
+                if params.get('drawBubblePosition', False):
+                    bubblePos = bubble.getPosition_atFrameNumber(frameNum)
+                    if bubblePos is not None:
+                        cv2.circle( frame, 
+                                    (int(bubblePos[0]), int(bubblePos[1])), 
+                                    2,  # radius 
+                                    (0, 0, 255), 
+                                    -1) # fill circle
                 
                 # Draw bubble velocity vector
-                bubbleVel = bubble.getVelocity_atFrameNumber(frameNum)
-                if bubbleVel is not None:
-                    cv2.arrowedLine(frame, 
-                                    (int(bubblePos[0]), int(bubblePos[1])),
-                                    (int(bubblePos[0] + bubbleVel[0]), int(bubblePos[1] + bubbleVel[1])),
-                                    (0, 255, 0), 
-                                    2)
+                if params.get('drawBubbleVelocity', False):
+                    bubbleVel = bubble.getVelocity_atFrameNumber(frameNum)
+                    if bubbleVel is not None:
+                        cv2.arrowedLine(frame, 
+                                        (int(bubblePos[0]), int(bubblePos[1])),
+                                        (int(bubblePos[0] + bubbleVel[0]), int(bubblePos[1] + bubbleVel[1])),
+                                        (0, 255, 0), 
+                                        1)  # color, thicknessß
                 
                 # Draw bubble acceleration vector
-                bubbleAcc = bubble.getAcceleration_atFrameNumber(frameNum)
-                if bubbleAcc is not None:
-                    cv2.arrowedLine(frame, 
-                                    (int(bubblePos[0]), int(bubblePos[1])),
-                                    (int(bubblePos[0] + bubbleAcc[0]), int(bubblePos[1] + bubbleAcc[1])),
-                                    (255, 0, 0), 
-                                    2)
+                if params.get('drawBubbleAcceleration', False):
+                    bubbleAcc = bubble.getAcceleration_atFrameNumber(frameNum)
+                    if bubbleAcc is not None:
+                        cv2.arrowedLine(frame, 
+                                        (int(bubblePos[0]), int(bubblePos[1])),
+                                        (int(bubblePos[0] + bubbleAcc[0]), int(bubblePos[1] + bubbleAcc[1])),
+                                        (255, 0, 0),
+                                        1)
                 
                 cv2.imwrite(str(framePath), frame)
 
@@ -522,8 +531,7 @@ class Video:
 
         # Extract frame numbers and positions
         position = bubble.getPositions_fullTrajectory()
-        frameNumbers = [loc[0] for loc in trajectory]
-        frameTime = np.arange(0, len(frameNumbers)*dt, dt)
+        frameTime = np.linspace(0, (len(position) - 1)*dt, len(position))
 
         # position is Nx2 (x,y)
         x = position[:, 0]
@@ -535,9 +543,7 @@ class Video:
         if velocity is not None and velocity.size > 0:
             vx = velocity[:, 0]
             vy = velocity[:, 1]
-            # velocity is defined between frames, we can associate them with frames[1:]
-            velFrames = frameNumbers[1:]
-            velTime = np.arange(0, len(velFrames)*dt, dt)
+            velTime = np.linspace(0, (len(velocity) - 1)*dt, len(velocity))
         else:
             velFrames = []
 
@@ -547,9 +553,7 @@ class Video:
         if acceleration is not None and acceleration.size > 0:
             ax = acceleration[:, 0]
             ay = acceleration[:, 1]
-            # acceleration is defined between velocity points, so frames[2:]
-            accFrames = frameNumbers[2:]
-            accTime = np.arange(0, len(accFrames)*dt, dt)
+            accTime = np.linspace(0, (len(acceleration) - 1)*dt, len(acceleration))
         else:
             accFrames = []
 
@@ -558,9 +562,6 @@ class Video:
         fig.suptitle(f"Bubble {bubble.getBubbleIndex()} Kinematics", fontsize=16)
 
         # Plot Position
-        # axs[0].plot(frameNumbers, x, label='X position')
-        # axs[0].plot(frameNumbers, y, label='Y position')
-        # axs[0].set_xlabel('Frame Number')
         axs[0].plot(frameTime, x, label='X position')
         axs[0].plot(frameTime, y, label='Y position')
         axs[0].set_xlabel('Time (s)')
@@ -570,9 +571,6 @@ class Video:
 
         # Plot Velocity if available
         if vx is not None and vy is not None:
-            # axs[1].plot(velFrames, vx, label='Vx')
-            # axs[1].plot(velFrames, vy, label='Vy')
-            # axs[1].set_xlabel('Frame Number')
             axs[1].plot(velTime, vx, label='Vx')
             axs[1].plot(velTime, vy, label='Vy')
             axs[1].set_xlabel('Time (s)')
@@ -585,9 +583,6 @@ class Video:
 
         # Plot Acceleration if available
         if ax is not None and ay is not None:
-            # axs[2].plot(accFrames, ax, label='Ax')
-            # axs[2].plot(accFrames, ay, label='Ay')
-            # axs[2].set_xlabel('Frame Number')
             axs[2].plot(accTime, ax, label='Ax')
             axs[2].plot(accTime, ay, label='Ay')
             axs[2].set_xlabel('Time (s)')

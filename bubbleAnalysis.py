@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from video import Video
+import tqdm
 
 class BubbleAnalysis:
     """
@@ -121,7 +122,7 @@ class BubbleAnalysis:
         Plot bubble kinematics for each bubble.
         """
         logging.info("Plotting bubble kinematics...")
-        for i in range(self.analysedVideo.getNumBubbles()):
+        for i in tqdm.tqdm(range(self.analysedVideo.getNumBubbles())):
             self.analysedVideo.plotBubbleKinematics(i, self.params, outDir_pathObj=videoDir_pathObj)
 
     def markBubblesOnFrames(self, binaryFrameDir_pathObj: Path, bubbleTrackFramesDir_pathObj: Path):
@@ -142,6 +143,9 @@ class BubbleAnalysis:
         else:
             bubbleListIndices = range(bubbleListIndices)
 
-        self.analysedVideo.app2_plotTrajectory(
-            bubbleListIndices, binaryFrameDir_pathObj, bubbleTrackFramesDir_pathObj, self.saveVideoFPS, self.frameNameTemplate
-        )
+        self.analysedVideo.app2_plotTrajectory(bubbleListIndices, 
+                                               binaryFrameDir_pathObj, 
+                                               bubbleTrackFramesDir_pathObj, 
+                                               self.saveVideoFPS, 
+                                               self.frameNameTemplate,
+                                               self.params)
