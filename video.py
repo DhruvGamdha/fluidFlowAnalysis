@@ -118,9 +118,9 @@ class Video:
             bubbleData = {
                 "bubbleIndex": bubble.getBubbleIndex(),
                 "trajectory": bubble.getFullTrajectory(),
-                "positions": bubble.positions.tolist() if bubble.positions is not None and bubble.positions.size > 0 else [],
-                "velocities": bubble.velocities.tolist() if bubble.velocities is not None and bubble.velocities.size > 0 else [],
-                "accelerations": bubble.accelerations.tolist() if bubble.accelerations is not None and bubble.accelerations.size > 0 else []
+                "positions": bubble.getPositions_fullTrajectory().tolist() if bubble.getPositions_fullTrajectory() is not None and bubble.getPositions_fullTrajectory().size > 0 else [],
+                "velocities": bubble.getVelocities_fullTrajectory().tolist() if bubble.getVelocities_fullTrajectory() is not None and bubble.getVelocities_fullTrajectory().size > 0 else [],
+                "accelerations": bubble.getAccelerations_fullTrajectory().tolist() if bubble.getAccelerations_fullTrajectory() is not None and bubble.getAccelerations_fullTrajectory().size > 0 else []
             }
             data["bubbles"].append(bubbleData)
             
@@ -164,10 +164,10 @@ class Video:
             for frameNumber, objectIndex in trajectory:
                 bubble.appendTrajectory(frameNumber, objectIndex)
 
-            # Convert velocities and accelerations back to numpy arrays
-            bubble.positions = np.array(positions) if positions else np.array([])
-            bubble.velocities = np.array(velocities) if velocities else np.array([])
-            bubble.accelerations = np.array(accelerations) if accelerations else np.array([])
+            # Add kinematics data
+            bubble.setPositions_fullTrajectory(np.array(positions) if positions else np.array([]))
+            bubble.setVelocities_fullTrajectory(np.array(velocities) if velocities else np.array([]))
+            bubble.setAccelerations_fullTrajectory(np.array(accelerations) if accelerations else np.array([]))
 
             self.bubbles.append(bubble)
 
@@ -487,7 +487,7 @@ class Video:
             return
 
         # Extract frame numbers and positions
-        position = bubble.positions
+        position = bubble.getPositions_fullTrajectory()
         frameNumbers = [loc[0] for loc in trajectory]
         frameTime = np.arange(0, len(frameNumbers)*dt, dt)
 
@@ -497,9 +497,10 @@ class Video:
 
         # Velocities: (N-1)x2 if present
         vx, vy = None, None
-        if bubble.velocities is not None and bubble.velocities.size > 0:
-            vx = bubble.velocities[:, 0]
-            vy = bubble.velocities[:, 1]
+        velocity = bubble.getVelocities_fullTrajectory()
+        if velocity is not None and velocity.size > 0:
+            vx = velocity[:, 0]
+            vy = velocity[:, 1]
             # velocity is defined between frames, we can associate them with frames[1:]
             velFrames = frameNumbers[1:]
             velTime = np.arange(0, len(velFrames)*dt, dt)
@@ -508,9 +509,10 @@ class Video:
 
         # Accelerations: (N-2)x2 if present
         ax, ay = None, None
-        if bubble.accelerations is not None and bubble.accelerations.size > 0:
-            ax = bubble.accelerations[:, 0]
-            ay = bubble.accelerations[:, 1]
+        acceleration = bubble.getAccelerations_fullTrajectory()
+        if acceleration is not None and acceleration.size > 0:
+            ax = acceleration[:, 0]
+            ay = acceleration[:, 1]
             # acceleration is defined between velocity points, so frames[2:]
             accFrames = frameNumbers[2:]
             accTime = np.arange(0, len(accFrames)*dt, dt)
@@ -627,9 +629,9 @@ class Video:
         trajectory = bubble.getFullTrajectory()
         if len(trajectory) < 2:
             # Not enough data points to compute velocity
-            bubble.velocities = np.array([])
-            bubble.accelerations = np.array([])
-            logging.warning(f"Not enough data points to compute velocity for Bubble {bubble.id}.")
+            bubble.setVelocities_fullTrajectory(np.array([]))
+            bubble.setAccelerations_fullTrajectory(np.array([]))
+            logging.warning(f"Not enough data points to compute velocity for Bubble {bubble.bubbleIndex}.")
             return
         
         # Get positions (x, y) for each point in the trajectory
@@ -638,18 +640,18 @@ class Video:
         # Compute velocities
         # v[i] = (pos[i+1] - pos[i]) * fps
         vel = (position[1:] - position[:-1]) * fps  # (N-1)x2 array
-        bubble.velocities = vel
+        bubble.setVelocities_fullTrajectory(vel)
 
         if len(trajectory) < 3:
             # Not enough points to compute acceleration
-            bubble.accelerations = np.array([])
+            bubble.setAccelerations_fullTrajectory(np.array([]))
             logging.warning(f"Not enough data points to compute acceleration for Bubble {bubble.bubbleIndex}.")
             return
 
         # Compute accelerations
         # a[i] = (v[i+1] - v[i]) * fps
         acc = (vel[1:] - vel[:-1]) * fps  # (N-2)x2 array
-        bubble.accelerations = acc
+        bubble.setAccelerations_fullTrajectory(acc)
 
         logging.debug(f"Computed velocities and accelerations for Bubble {bubble.bubbleIndex}.")
         
@@ -701,7 +703,7 @@ class Video:
         for bubble in self.bubbles:
             trajectory = bubble.getFullTrajectory()
             n_points = len(trajectory)
-            bubble.positions = np.zeros((n_points, 2), dtype=float)
+            positions = np.zeros((n_points, 2), dtype=float)
             
             # Loop through all trajectory points and compute position
             for i, loc in enumerate(trajectory):
@@ -710,30 +712,32 @@ class Video:
                     pixelLocs = obj.getAllPixelLocs()
                     
                     # Compute position (center of mass) 
-                    bubble.positions[i, :] = calculatePixelCentroid(pixelLocs)
+                    positions[i, :] = calculatePixelCentroid(pixelLocs)
                                         
                 except ValueError as e:
                     logging.error(f"Error retrieving object for trajectory location {loc}: {e}")
-                    bubble.positions[i, :] = [np.nan, np.nan]  # Assign NaN for missing positions
+                    positions[i, :] = [np.nan, np.nan]  # Assign NaN for missing positions
+            
+            bubble.setPositions_fullTrajectory(positions)
             
             if n_points < 2:
                 logging.warning(f"Not enough data points to compute velocity for Bubble {bubble.bubbleIndex}.")
-                bubble.velocities = np.array([])
-                bubble.accelerations = np.array([])
+                bubble.setVelocities_fullTrajectory(np.array([]))
+                bubble.setAccelerations_fullTrajectory(np.array([]))
                 continue
             
             # Compute velocities
-            vel = (bubble.positions[1:] - bubble.positions[:-1]) / dt
-            bubble.velocities = vel
+            vel = (positions[1:] - positions[:-1]) / dt
+            bubble.setVelocities_fullTrajectory(vel)
             
             if n_points < 3:
                 logging.warning(f"Not enough data points to compute acceleration for Bubble {bubble.bubbleIndex}.")
-                bubble.accelerations = np.array([])
+                bubble.setAccelerations_fullTrajectory(np.array([]))
                 continue
             
             # Compute accelerations
             acc = (vel[1:] - vel[:-1]) / dt
-            bubble.accelerations = acc    
+            bubble.setAccelerations_fullTrajectory(acc)    
 
 
 def convert_to_builtin_types(obj):
