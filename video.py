@@ -376,9 +376,6 @@ class Video:
         If frames are missing, fill them from the binaryFrameDir_pathObj.
         """
         from utils import getFrameNumbers_ordered, DoNumExistingFramesMatch
-        
-        if bubbleListIndices is False:
-            bubbleListIndices = list(range(len(self.bubbles)))
 
         colorIndex = 0
         for bubbleListIndex in tqdm(bubbleListIndices, desc='Creating frames'):
@@ -395,7 +392,11 @@ class Video:
                 if framePath.exists():
                     frame = cv2.imread(str(framePath))
                 else:
+                    # Read the binary frame to get dimensions
                     frame = cv2.imread(str(binaryFrameDir_pathObj / frameName))
+                    # Create blank white background frame of the same size
+                    frame = np.zeros((frame.shape[0], frame.shape[1], 3), dtype=np.uint8)
+                    frame.fill(255)
 
                 if frame is None:
                     logging.warning("Frame %s not found or not readable.", frameName)

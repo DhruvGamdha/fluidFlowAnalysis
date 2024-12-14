@@ -122,7 +122,7 @@ class BubbleAnalysis:
         Plot bubble kinematics for each bubble.
         """
         logging.info("Plotting bubble kinematics...")
-        for i in tqdm.tqdm(range(self.analysedVideo.getNumBubbles())):
+        for i in tqdm.tqdm(range(self.analysedVideo.getNumBubbles()), desc="Plotting bubble kinematics"):
             self.analysedVideo.plotBubbleKinematics(i, self.params, outDir_pathObj=videoDir_pathObj)
 
     def markBubblesOnFrames(self, binaryFrameDir_pathObj: Path, bubbleTrackFramesDir_pathObj: Path):
