@@ -66,39 +66,91 @@ def cropFrames(origFrameDir_pathObj, croppedFrameDir_pathObj, frameNameTemplate,
         Template for naming frames.
     params : dict
         Dictionary containing crop boundaries (top, bottom, left, right).
+        
+    Returns
+    -------
+    bool
+        True if cropping was performed, False if skipped.
     """
+    # Ensure source directory exists
+    if not origFrameDir_pathObj.is_dir():
+        logging.error("Source directory %s does not exist or is not a directory.", origFrameDir_pathObj)
+        return False
+    
+    # Create output directory if it doesn't exist
+    croppedFrameDir_pathObj.mkdir(parents=True, exist_ok=True)
+    
+    # Get frame numbers
     allFramesNum = getFrameNumbers_ordered(origFrameDir_pathObj, frameNameTemplate)
+    if not allFramesNum.size:
+        logging.warning("No frames found for cropping.")
+        return False
+        
+    # Check if we already have the right number of frames
     if DoNumExistingFramesMatch(croppedFrameDir_pathObj, len(allFramesNum)):
-        return
+        return False
      
     logging.info("Cropping frames. Existing frames in %s may be overwritten.", str(croppedFrameDir_pathObj))
-    top, bottom, left, right = params["top"], params["bottom"], params["left"], params["right"]
     
-    frame = cv2.imread(str(origFrameDir_pathObj / frameNameTemplate.format(allFramesNum[0])), 0)
-    # if crop values are zero or invalid, set the crop parameters to the full frame
-    if (top == bottom == left == right == 0 
-        or top >= bottom 
-        or left >= right 
-        or top < 0 
-        or left < 0 
-        or bottom < 0 
-        or right < 0 
-        or top >= frame.shape[0] 
-        or left >= frame.shape[1]
-        or bottom > frame.shape[0]
-        or right > frame.shape[1]):
-        logging.warning("Invalid crop parameters. Using full frame.")
-        top, bottom, left, right = 0, frame.shape[0], 0, frame.shape[1]
+    # Extract crop parameters
+    top = params.get("top", 0)
+    bottom = params.get("bottom", 0)
+    left = params.get("left", 0)
+    right = params.get("right", 0)
     
-    for frameNum in allFramesNum:
+    # Read first frame to validate crop parameters
+    first_frame_path = origFrameDir_pathObj / frameNameTemplate.format(allFramesNum[0])
+    frame = cv2.imread(str(first_frame_path), 0)
+    if frame is None:
+        logging.error("Cannot read first frame %s. Aborting crop operation.", first_frame_path)
+        return False
+    
+    # Validate crop parameters
+    height, width = frame.shape
+    if _are_crop_params_invalid(top, bottom, left, right, height, width):
+        logging.warning("Invalid crop parameters: top=%d, bottom=%d, left=%d, right=%d. Using full frame.", top, bottom, left, right)
+        top, bottom, left, right = 0, height, 0, width
+    
+    # Process frames with progress indicator
+    for frameNum in tqdm(allFramesNum, desc="Cropping frames"):
         frame_path = origFrameDir_pathObj / frameNameTemplate.format(frameNum)
         frame = cv2.imread(str(frame_path), 0)
         if frame is None:
             logging.warning("Frame %s could not be read. Skipping.", frame_path)
             continue
-        cropped = frame[top:bottom, left:right]
+        
+        if top >= height-bottom or left >= width-right:
+            logging.warning("Crop parameters would result in empty image. Using full frame instead.")
+            cropped = frame.copy()
+        else:
+            cropped = frame[top:height-bottom, left:width-right]
         outFramePath = croppedFrameDir_pathObj / frameNameTemplate.format(frameNum)
         cv2.imwrite(str(outFramePath), cropped)
+    
+    return True
+
+def _are_crop_params_invalid(top, bottom, left, right, height, width):
+    """
+    Check if crop parameters are invalid.
+    
+    Parameters
+    ----------
+    top, bottom, left, right : int
+        Amount to crop from each edge (top, bottom, left, right).
+    height, width : int
+        Dimensions of the image.
+        
+    Returns
+    -------
+    bool
+        True if parameters are invalid, False otherwise.
+    """
+    return (top < 0 or 
+            bottom < 0 or
+            left < 0 or 
+            right < 0 or
+            top + bottom >= height or
+            left + right >= width)
 
 def processImages(originalFrameDir_pathObj, binaryFrameDir_pathObj, nameTemplate, params):
     """
@@ -115,45 +167,80 @@ def processImages(originalFrameDir_pathObj, binaryFrameDir_pathObj, nameTemplate
     params : dict
         Dictionary containing threshold and morphological parameters.
     """
+    # Get frame numbers
     allFramesNum = getFrameNumbers_ordered(originalFrameDir_pathObj, nameTemplate)
+    if not allFramesNum.size:
+        logging.warning("No frames found for processing.")
+        return
+    
+    # Create output directory if it doesn't exist
+    binaryFrameDir_pathObj.mkdir(parents=True, exist_ok=True)
+    
+    # Check if we already have the right number of frames
     if DoNumExistingFramesMatch(binaryFrameDir_pathObj, len(allFramesNum)):
         return
     
+    # Extract parameters
     blockSize = params["blockSize"]
     constantSub = params["constantSub"]
     connectivity = params["connectivity"]
     minSize = params["minSize"]
-    c_o_kernel = params.get("C_O_KernelSize", 1)  # Default kernel size if not specified
-
+    c_o_kernel = params.get("C_O_KernelSize", 1)
+    fill_holes = params.get("fillHoles", True)
+    
+    # Create kernel once (efficiency)
+    kernel = np.ones((c_o_kernel, c_o_kernel), np.uint8)
+    
+    num_processed = 0
     for frameNum in tqdm(allFramesNum, desc="Processing frames"):
-        frame_path = originalFrameDir_pathObj / nameTemplate.format(frameNum)
-        frame = cv2.imread(str(frame_path), 0)
-        if frame is None:
-            logging.error("Frame %s could not be read. Stopping processing.", frame_path)
-            return
-        
-        # Adaptive thresholding
-        th2 = cv2.adaptiveThreshold(
-            frame, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, blockSize, constantSub
-        )
-        invth2 = 255 - th2
-
-        # Morphological closing
-        kernel = np.ones((c_o_kernel, c_o_kernel), np.uint8)
-        invth2 = cv2.morphologyEx(invth2, cv2.MORPH_CLOSE, kernel)
-
-        # Label connected regions
-        labelImg, count = skm.label(invth2, connectivity=connectivity, return_num=True)
-        
-        # Remove small objects
-        for i in range(1, count+1):
-            numPixels = np.sum(labelImg == i)
-            if numPixels <= minSize:
-                invth2[labelImg == i] = 0
-                
-        th2 = 255 - invth2
-        outFramePath = binaryFrameDir_pathObj / nameTemplate.format(frameNum)
-        cv2.imwrite(str(outFramePath), th2)
+        try:
+            # Read frame
+            frame_path = originalFrameDir_pathObj / nameTemplate.format(frameNum)
+            frame = cv2.imread(str(frame_path), 0)
+            if frame is None:
+                logging.error("Frame %s could not be read. Skipping.", frame_path)
+                continue
+            
+            # Step 1: Adaptive thresholding
+            th2 = cv2.adaptiveThreshold(
+                frame, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, blockSize, constantSub
+            )
+            invth2 = 255 - th2
+            
+            # Step 2: Morphological closing to clean up noise
+            invth2 = cv2.morphologyEx(invth2, cv2.MORPH_CLOSE, kernel)
+            
+            # Step 3: First label all connected components for consistent size filtering
+            labelImg, count = skm.label(invth2, connectivity=connectivity, return_num=True)
+            
+            # Step 4: Create a filtered mask (remove small objects)
+            filtered = np.zeros_like(invth2)
+            for i in range(1, count+1):
+                region = labelImg == i
+                if np.sum(region) >= minSize:
+                    filtered[region] = 255
+            
+            # Step 5: Optionally fill holes in remaining objects
+            if fill_holes:
+                contours, _ = cv2.findContours(filtered, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                filled = np.zeros_like(filtered)
+                for contour in contours:
+                    cv2.drawContours(filled, [contour], 0, 255, -1)  # -1 means fill
+                result = filled
+            else:
+                result = filtered
+            
+            # Step 6: Convert back to original binary format and save
+            th2 = 255 - result
+            outFramePath = binaryFrameDir_pathObj / nameTemplate.format(frameNum)
+            cv2.imwrite(str(outFramePath), th2)
+            num_processed += 1
+            
+        except Exception as e:
+            logging.error(f"Error processing frame {frameNum}: {str(e)}")
+            continue
+    
+    logging.info(f"Successfully processed {num_processed} out of {len(allFramesNum)} frames")
 
 def makeConcatVideos(lftFrameDir_pathObj, rhtFrameDir_pathObj, nameTemplate, videoDir_pathObj, fps, params):
     """
