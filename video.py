@@ -11,7 +11,7 @@ import datetime
 from object import Object
 from frame import Frame
 from bubble import Bubble
-from utils import getFrameNumbers_ordered, imgSegmentation, calculatePixelCentroid, DoNumExistingFramesMatch
+from utils import getFrameNumbers_ordered, imgSegmentation, DoNumExistingFramesMatch, calculatePosition
 
 from typing import List, Tuple
 
@@ -874,8 +874,8 @@ class Video:
                     obj:Object = self.getObjectFromBubbleLoc(loc)
                     pixelLocs = obj.getAllPixelLocs()
                     
-                    # Compute position (center of mass) 
-                    positions[i, :] = calculatePixelCentroid(pixelLocs)
+                    # Compute position
+                    positions[i, :] = calculatePosition(pixelLocs)
                                         
                 except ValueError as e:
                     logging.error(f"Error retrieving object for trajectory location {loc}: {e}")

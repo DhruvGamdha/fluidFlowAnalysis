@@ -485,3 +485,18 @@ def calculatePixelCentroid(pixelLocs):
     x = int(round(np.mean(cols)))
     y = int(round(np.mean(rows)))
     return np.array([x, y])
+
+def calculatePixelTopPoint(pixelLocs):
+    """
+    Calculate the top most point of a set of pixel locations.
+    """
+    
+    rows, cols = pixelLocs
+    x = int(round(np.mean(cols)))
+    y = int(round(np.min(rows)))
+    return np.array([x, y])
+
+def calculatePosition(pixelLocs):
+    
+    return calculatePixelTopPoint(pixelLocs)
+    # return calculatePixelCentroid(pixelLocs)
