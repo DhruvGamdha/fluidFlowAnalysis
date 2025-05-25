@@ -1,1 +1,2 @@
-python main.py configs/config_exp.cfg
+# python main.py configs/config_exp.cfg
+python postprocessing.py
