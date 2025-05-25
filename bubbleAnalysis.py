@@ -69,7 +69,7 @@ class BubbleAnalysis:
         filePathObj = analysisBaseDir_pathObj / 'videoFrames.txt'
         if filePathObj.exists():
             logging.info("Loading existing frame analysis from text file...")
-            self.analysedVideo.loadFramesFromTextFile(analysisBaseDir_pathObj)
+            self.analysedVideo.loadFramesFromTextFile(analysisBaseDir_pathObj, self.params)
         else:
             self.analysedVideo = Video.dropAnalysis(binaryFrameDir_pathObj, analysisBaseDir_pathObj, self.frameNameTemplate, self.params)
             self.analysedVideo.saveFramesToTextFile(analysisBaseDir_pathObj)
@@ -80,7 +80,7 @@ class BubbleAnalysis:
         """
         logging.info("Verifying saved analysis results...")
         newVideo = Video()
-        newVideo.loadFramesFromTextFile(analysisBaseDir_pathObj)
+        newVideo.loadFramesFromTextFile(analysisBaseDir_pathObj, self.params)
         newVideo.loadBubblesFromTextFile(analysisBaseDir_pathObj)
         
         if newVideo.isSame(self.analysedVideo):

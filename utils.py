@@ -496,7 +496,12 @@ def calculatePixelTopPoint(pixelLocs):
     y = int(round(np.min(rows)))
     return np.array([x, y])
 
-def calculatePosition(pixelLocs):
+def calculatePosition(pixelLocs, position = 'topPoint'):
     
-    return calculatePixelTopPoint(pixelLocs)
-    # return calculatePixelCentroid(pixelLocs)
+    if position == 'centroid':
+        return calculatePixelCentroid(pixelLocs)
+    elif position == 'topPoint':
+        return calculatePixelTopPoint(pixelLocs)
+    else:
+        logging.error("Invalid position type: %s. Defaulting to centroid.", position)
+        return calculatePixelCentroid(pixelLocs)

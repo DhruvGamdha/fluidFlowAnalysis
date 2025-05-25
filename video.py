@@ -112,7 +112,7 @@ class Video:
                 topLft_x = np.min(cols)
                 objInd = objLabel - 1
 
-                obj = Object(frameNum, objInd, topLft_x, topLft_y, len(rows), rows, cols)
+                obj = Object(frameNum, objInd, topLft_x, topLft_y, len(rows), rows, cols, params)
                 frame.addObject(obj)
             
             video.addFrame(frame)
@@ -240,7 +240,7 @@ class Video:
 
         logging.info("Frames saved to %s in JSON format.", savePath)
 
-    def loadFramesFromTextFile(self, loadDir_pathObj: Path):
+    def loadFramesFromTextFile(self, loadDir_pathObj: Path, params: dict):
         """
         Load frames data (including objects) from a JSON file.
         """
@@ -281,7 +281,7 @@ class Video:
                 # Note: The Object constructor takes (frameNumber, objectIndex, topLft_x, topLft_y, size, rows, cols).
                 # Here we pass posX, posY as top-left coordinates (as the old code did).
                 # The object will recalculate the center of mass internally from the pixel locations.
-                newObject = Object(objFrameNumber, objIndex, posX, posY, size, rows, cols)
+                newObject = Object(objFrameNumber, objIndex, posX, posY, size, rows, cols, params)
                 frame.addObject(newObject)
             
             self.frames.append(frame)
@@ -875,7 +875,7 @@ class Video:
                     pixelLocs = obj.getAllPixelLocs()
                     
                     # Compute position
-                    positions[i, :] = calculatePosition(pixelLocs)
+                    positions[i, :] = calculatePosition(pixelLocs, params.get('position'))
                                         
                 except ValueError as e:
                     logging.error(f"Error retrieving object for trajectory location {loc}: {e}")

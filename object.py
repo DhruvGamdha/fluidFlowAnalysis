@@ -21,13 +21,13 @@ class Object:
         The object's center of mass (x, y).
     """
 
-    def __init__(self, frameNumber, objectIndex, topLft_x, topLft_y, size, rows, cols):
+    def __init__(self, frameNumber, objectIndex, topLft_x, topLft_y, size, rows, cols, params):
         self.frameNumber = frameNumber
         self.objectIndex = objectIndex
         self.topLft_position = np.array([topLft_x, topLft_y])
         self.size = size
         self.pixelLocs = np.array([rows, cols])
-        self.position = calculatePosition(self.pixelLocs)
+        self.position = calculatePosition(self.pixelLocs, params.get('position'))
 
     def setFrameNumber(self, frameNumber):
         self.frameNumber = frameNumber
