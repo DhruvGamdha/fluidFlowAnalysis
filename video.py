@@ -6,6 +6,7 @@ from tqdm import tqdm
 from PIL import ImageColor
 from pathlib import Path
 import json
+import datetime
 
 from object import Object
 from frame import Frame
@@ -380,8 +381,9 @@ class Video:
                 self.bubbles.append(newBubble)
 
         # Sort bubbles by size and filter them based on trajectory length threshold
-        self.bubbles.sort(key=lambda b: self.getBubbleSize(b.getLatestLocation()), reverse=True)
         self.bubbles = [b for b in self.bubbles if b.getTrajectoryLength() >= params['bubbleTrajectoryLengthThreshold']]
+        self.bubbles.sort(key=lambda b: self.getBubbleSize(b.getLatestLocation()), reverse=True)
+        # self.bubbles.sort(key=lambda b: len(b.trajectory), reverse=True)
 
         # Compute velocities and accelerations for each bubble
         for bubble in self.bubbles:
@@ -593,11 +595,19 @@ class Video:
         if len(trajectory) == 0:
             logging.warning("Bubble %d has no trajectory to plot.", bubbleIndex)
             return
+        
+        # Calculate the global time range for the entire video
+        first_frame = self.frames[0].getFrameNumber()
+        last_frame = self.frames[-1].getFrameNumber()
+        total_time_range = (last_frame - first_frame + 1) * dt  # +1 to include the last frame
 
         # Extract frame numbers and positions
         position = bubble.getPositions_fullTrajectory()
-        frameTime = np.linspace(0, (len(position) - 1)*dt, len(position))
-
+        frame_numbers = [loc[0] for loc in trajectory]
+        # frameTime = np.linspace(0, (len(position) - 1)*dt, len(position))
+        ## Calculate time values based on frame numbers relative to the first frame
+        frameTime = [(fn - first_frame) * dt for fn in frame_numbers]
+        
         # position is Nx2 (x,y)
         x = position[:, 0]
         y = position[:, 1]
@@ -608,9 +618,11 @@ class Video:
         if velocity is not None and velocity.size > 0:
             vx = velocity[:, 0]
             vy = velocity[:, 1]
-            velTime = np.linspace(0, (len(velocity) - 1)*dt, len(velocity))
+            # velTime = np.linspace(0, (len(velocity) - 1)*dt, len(velocity))
+            velTime = frameTime[:-1]  # Time for velocity is one less than position
         else:
-            velFrames = []
+            # velFrames = []
+            velTime = []
 
         # Accelerations: (N-2)x2 if present
         ax, ay = None, None
@@ -618,19 +630,26 @@ class Video:
         if acceleration is not None and acceleration.size > 0:
             ax = acceleration[:, 0]
             ay = acceleration[:, 1]
-            accTime = np.linspace(0, (len(acceleration) - 1)*dt, len(acceleration))
+            # accTime = np.linspace(0, (len(acceleration) - 1)*dt, len(acceleration))
+            accTime = frameTime[:-2]  # Time for acceleration is two less than position
         else:
-            accFrames = []
+            # accFrames = []
+            accTime = []
 
         # Create figure and axes
         fig, axs = plt.subplots(3, 1, figsize=(10, 12))
         fig.suptitle(f"Bubble {bubble.getBubbleIndex()} Kinematics", fontsize=16)
+        
+        # Set common x-axis limits for consistent time scale across all plots
+        x_min = 0
+        x_max = total_time_range
 
         # Plot Position
         axs[0].plot(frameTime, x, label='X position')
         axs[0].plot(frameTime, y, label='Y position')
         axs[0].set_xlabel('Time (s)')
         axs[0].set_ylabel('Position (pixels)')
+        axs[0].set_xlim(x_min, x_max)
         axs[0].legend()
         axs[0].grid(True)
 
@@ -640,6 +659,7 @@ class Video:
             axs[1].plot(velTime, vy, label='Vy')
             axs[1].set_xlabel('Time (s)')
             axs[1].set_ylabel('Velocity (pixels/s)')
+            axs[1].set_xlim(x_min, x_max)
             axs[1].legend()
             axs[1].grid(True)
         else:
@@ -652,6 +672,7 @@ class Video:
             axs[2].plot(accTime, ay, label='Ay')
             axs[2].set_xlabel('Time (s)')
             axs[2].set_ylabel('Acceleration (pixels/s²)')
+            axs[2].set_xlim(x_min, x_max)
             axs[2].legend()
             axs[2].grid(True)
         else:
@@ -661,9 +682,53 @@ class Video:
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
         outDir_pathObj.mkdir(parents=True, exist_ok=True)
+        
+        # Save the plot
         plotPath = outDir_pathObj / f"bubble_{bubble.getBubbleIndex()}_kinematics.png"
         plt.savefig(str(plotPath), dpi=300)
         plt.close(fig)
+        
+        # Save data as CSV
+        csvPath = outDir_pathObj / f"bubble_{bubble.getBubbleIndex()}_kinematics.csv"
+        
+        # Get bubble size data
+        _, size_array = self.getPositionAndSizeArrayFromTrajectory(bubble)
+        object_indices = [loc[1] for loc in trajectory]
+        
+        # Prepare data for CSV
+        data = []
+        # Create rows for CSV - start with position data (all frames)
+        for i in range(len(frameTime)):
+            row = {
+                'time': frameTime[i],
+                'frame_number': frame_numbers[i],
+                'object_index': object_indices[i],
+                'size': size_array[i],
+                'position_x': x[i],
+                'position_y': y[i],
+                'velocity_x': None if vx is None or i >= len(vx) else vx[i],
+                'velocity_y': None if vy is None or i >= len(vy) else vy[i],
+                'acceleration_x': None if ax is None or i >= len(ax) else ax[i],
+                'acceleration_y': None if ay is None or i >= len(ay) else ay[i]
+            }
+            data.append(row)
+        
+        # Add bubble metadata at the top of the file
+        with open(csvPath, 'w') as f:
+            f.write(f"# Bubble kinematics data for bubble index: {bubble.getBubbleIndex()}\n")
+            f.write(f"# Trajectory length: {len(trajectory)}\n")
+            f.write(f"# First frame: {frame_numbers[0]}, Last frame: {frame_numbers[-1]}\n")
+            f.write(f"# Frame time step (dt): {dt} seconds\n")
+            f.write(f"# Generated on: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("#\n")
+            
+            # Convert data to CSV
+            import csv
+            writer = csv.DictWriter(f, fieldnames=data[0].keys())
+            writer.writeheader()
+            writer.writerows(data)
+        
+        # logging.info(f"Bubble {bubble.getBubbleIndex()} kinematics saved to {plotPath} and {csvPath}")
 
     def isVideoContinuous(self):
         """
@@ -679,16 +744,20 @@ class Video:
         Check if another video object contains the same frames and bubbles.
         """
         if len(self.frames) != len(video.frames):
+            logging.warning("Number of frames do not match.")
             return False
         if len(self.bubbles) != len(video.bubbles):
+            logging.warning("Number of bubbles do not match.")
             return False
         
         for i in range(len(self.frames)):
             if not self.frames[i].isSame(video.frames[i]):
+                logging.warning("Frames %d do not match.", i)
                 return False
 
         for i in range(len(self.bubbles)):
             if not self.bubbles[i].isSame(video.bubbles[i]):
+                logging.warning("Bubbles %d do not match.", i)
                 return False
         return True
 
