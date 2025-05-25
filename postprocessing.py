@@ -38,7 +38,8 @@ def plot_pair(y1, y2, ylabel, title):
     plt.ylabel(ylabel)
     plt.title(title)
     plt.legend()
-    plt.show()
+    # plt.show()
+    plt.savefig(f'{y1}_{y2}.png', dpi=300, bbox_inches='tight')
 
 plot_pair('position_x','position_y',   'Position',     'Less‐Smoothed Position vs Time')
 plot_pair('velocity_x','velocity_y',   'Velocity',     'Less‐Smoothed Velocity vs Time')
