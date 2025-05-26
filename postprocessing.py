@@ -3,8 +3,8 @@ from scipy.signal import savgol_filter
 import matplotlib.pyplot as plt
 
 # === 1. Load the data ===
-# file_path = 'bubble_261_kinematics.csv'
-file_path = 'bubble_223_kinematics.csv'
+# file_path = 'bubble_261_kinematics.csv'   # centroid
+file_path = 'bubble_223_kinematics.csv'     # toppoint
 df = pd.read_csv(file_path, comment='#')
 
 # === 2. Define the time range ===
@@ -40,6 +40,10 @@ def plot_pair(y1, y2, ylabel, title):
     plt.legend()
     # plt.show()
     plt.savefig(f'{y1}_{y2}.png', dpi=300, bbox_inches='tight')
+    
+    # Save the DataFrame to a CSV file
+    df_range.to_csv(f'{y1}_{y2}_smoothed.csv', index=False)
+    plt.close()
 
 plot_pair('position_x','position_y',   'Position',     'Less‐Smoothed Position vs Time')
 plot_pair('velocity_x','velocity_y',   'Velocity',     'Less‐Smoothed Velocity vs Time')
