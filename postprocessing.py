@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 import argparse
 import os
+import sys
 
 def convert_and_smooth(df, mmperpix, window_length, polyorder):
     """
@@ -31,17 +32,16 @@ def convert_and_smooth(df, mmperpix, window_length, polyorder):
 
 def plot_pair(df, raw_x, raw_y, ylabel, title, outfile):
     """
-    Plots raw (dashed) and smoothed (solid) for x & y on one figure.
+    Plots raw (dashed) and smoothed (solid) for x & y on one figure,
+    then also a second figure showing only the smoothed traces.
     """
     t = df['time']
+    # 1) raw + smooth
     plt.figure()
-    # raw
     plt.plot(t, df[raw_x],    '--', label=f'{raw_x} raw')
     plt.plot(t, df[raw_y],    '--', label=f'{raw_y} raw')
-    # smooth
     plt.plot(t, df[f'{raw_x}_smooth'], '-', label=f'{raw_x} smooth')
     plt.plot(t, df[f'{raw_y}_smooth'], '-', label=f'{raw_y} smooth')
-
     plt.xlabel('Time (s)')
     plt.ylabel(ylabel)
     plt.title(title)
@@ -49,29 +49,28 @@ def plot_pair(df, raw_x, raw_y, ylabel, title, outfile):
     plt.savefig(outfile, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"Saved plot: {outfile}")
-    
+
+    # 2) smooth only
+    outfile2 = outfile.replace('.png', '_smoothed_only.png')
     plt.figure()
-    # raw
-    # plt.plot(t, df[raw_x],    '--', label=f'{raw_x} raw')
-    # plt.plot(t, df[raw_y],    '--', label=f'{raw_y} raw')
-    # smooth
     plt.plot(t, df[f'{raw_x}_smooth'], '-', label=f'{raw_x} smooth')
     plt.plot(t, df[f'{raw_y}_smooth'], '-', label=f'{raw_y} smooth')
-
     plt.xlabel('Time (s)')
     plt.ylabel(ylabel)
-    plt.title(title)
+    plt.title(title + ' (smoothed only)')
     plt.legend()
-    plt.savefig(outfile.replace('.png', '_smoothed_only.png'), dpi=300, bbox_inches='tight')
+    plt.savefig(outfile2, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"Saved plot: {outfile.replace('.png', '_smoothed_only.png')}")
+    print(f"Saved plot: {outfile2}")
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert px→mm, smooth kinematics, export CSV and PNGs"
+        description="Convert px→mm, smooth kinematics, merge ellipse data, export CSV and PNGs"
     )
     parser.add_argument("csv_file",
-                        help="Input CSV (time + position_x/y, velocity_x/y, acceleration_x/y in px-units)")
+                        help="Input kinematics CSV (time + position_x/y, velocity_x/y, acceleration_x/y in px-units)")
+    parser.add_argument("--ellipse", dest="ellipse_file", required=True,
+                        help="Ellipse CSV (with columns: [frame_number], ellipse_center_x/y, major_axis_length, minor_axis_length in px)")
     parser.add_argument("--start", type=float, default=11,
                         help="Start time (s)")
     parser.add_argument("--end",   type=float, default=18,
@@ -84,27 +83,52 @@ def main():
                         help="Savgol polynomial order (≤ window-1)")
     args = parser.parse_args()
 
-    # — Load & time‐trim —
+    # — 1) Load & time‐trim kinematics —
     df = pd.read_csv(args.csv_file, comment='#')
     df = df[(df.time >= args.start) & (df.time <= args.end)].reset_index(drop=True)
     n = len(df)
 
-    # — Sanitize window & polyorder —
+    # — 2) Sanitize window & polyorder —
     w = args.window
     if w > n:
         w = n if n % 2 == 1 else n - 1
     p = min(args.poly, w-1)
 
-    # — Convert & smooth —
+    # — 3) Convert & smooth kinematics —
     df = convert_and_smooth(df, args.mmperpix, w, p)
 
-    # — Export single CSV —
+    # — 4) Load, convert & merge ellipse data —
+    ell = pd.read_csv(args.ellipse_file)
+    # Required cols in ellipse CSV:
+    needed = ['ellipse_center_x','ellipse_center_y','major_axis_length','minor_axis_length', 'ellipse_angle']
+    if not all(c in ell.columns for c in needed):
+        print(f"Error: ellipse CSV must contain columns {needed}", file=sys.stderr)
+        sys.exit(1)
+
+    # Convert to mm (centers and lengths)
+    for c in needed:
+        # multiply by mmperpix except for 'ellipse_angle'
+        if c != 'ellipse_angle':
+            ell[c] = ell[c] * args.mmperpix
+
+    # Merge strategy:
+    # If there is a 'frame_number' in both, merge on that.
+    if 'frame_number' in ell.columns and 'frame_number' in df.columns:
+        df = df.merge(ell[['frame_number'] + needed], on='frame_number', how='left')
+    else:
+        # else, assume row-by-row correspondence
+        if len(ell) != len(df):
+            print("Warning: ellipse and kinematic tables differ in length; merging by index.", file=sys.stderr)
+        for c in needed:
+            df[c] = ell[c].values[:len(df)]
+
+    # — 5) Export single CSV with everything —
     base = os.path.splitext(os.path.basename(args.csv_file))[0]
-    out_csv = f"{base}_mm_converted_smoothed.csv"
+    out_csv = f"{base}_mm_converted_smoothed_with_ellipse.csv"
     df.to_csv(out_csv, index=False)
     print(f"Exported CSV: {out_csv}")
 
-    # — Plotting —
+    # — 6) Plotting —
     plot_pair(
         df,
         raw_x='position_x', raw_y='position_y',

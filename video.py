@@ -938,7 +938,7 @@ class Video:
             # --- 3) Write out ellipse parameters ---
             df_e = pd.DataFrame({
                 'time':                time,
-                'frameNumber':         frames,
+                'frame_number':         frames,
                 'objectIndex':         obj_idxs,
                 'ellipse_center_x':    ellipse_params[:, 0],
                 'ellipse_center_y':    ellipse_params[:, 1],
