@@ -44,7 +44,7 @@ def save_config(para, outpDirObj):
         libconf.dump(para, f)
     logging.info(f"Configuration saved to {config_file_path}")
 
-def configure_logging(outpDirObj):
+def configure_logging(outpDirObj: directories):
     """
     Configure logging to output both to console and a file in the output directory.
     """
@@ -137,7 +137,8 @@ def run_analysis(para):
     )
 
     analysis.analyzeBubbleMotion(
-        outpDirObj.getDirPathObj('analysis/bubbleTracking/frames').parents[1]
+        outpDirObj.getDirPathObj('analysis/bubbleTracking/frames').parents[1],
+        outpDirObj.getDirPathObj('analysis/bubbleTracking/ellipse')
     )
     
     analysis.plotBubbleKinematics(

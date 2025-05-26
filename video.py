@@ -7,6 +7,7 @@ from PIL import ImageColor
 from pathlib import Path
 import json
 import datetime
+import pandas as pd
 
 from object import Object
 from frame import Frame
@@ -849,58 +850,107 @@ class Video:
         return position, size
 
     
-    def computeBubbleKinematics(self, params: dict):
+    def computeBubbleKinematics(self, 
+                                params: dict,
+                                bubbleTrackEllipseDir_pathObj: Path):
         """
-        Evaluate bubble features like position, velocity, acceleration.
-        
-        Steps:
-        1. Loop through all bubbles.
-        2. For each bubble, get the trajectory (frameNumber, objectIndex).
-        3. For each trajectory point, get the object and its pixel locations.
-        4. Compute features like position (default: center of mass, but can be changed) and fill the position array.
-        5. Use the position array to compute velocities and accelerations using the input time step and store in the velocities and accelerations arrays.
+        Evaluate bubble features like position, velocity, acceleration,
+        AND fit an ellipse to each blob to get center, major & minor axes.
+        Saves one CSV per bubble: bubble_<bubbleIndex>_ellipse.csv
         """
-        
+
         dt = params.get('frameTimeStep')
-        
+
         for bubble in self.bubbles:
-            trajectory = bubble.getFullTrajectory()
-            n_points = len(trajectory)
-            positions = np.zeros((n_points, 2), dtype=float)
-            
-            # Loop through all trajectory points and compute position
+            trajectory = bubble.getFullTrajectory()  # list of (frameNumber, objectIndex)
+            n_points   = len(trajectory)
+            positions  = np.zeros((n_points, 2), dtype=float)
+            ellipse_params = np.zeros((n_points, 5), dtype=float)  # [cx, cy, major, minor, angle]
+            frames     = np.zeros(n_points, dtype=int)
+            obj_idxs   = np.zeros(n_points, dtype=int)
+            time = np.zeros(n_points, dtype=float)
+
+            # --- 1) Loop through trajectory, compute position & ellipse fit ---
             for i, loc in enumerate(trajectory):
+                frame_num, obj_idx = loc
+                frames[i]   = frame_num
+                obj_idxs[i] = obj_idx
+                time[i]    = (frame_num - self.frames[0].getFrameNumber()) * dt
+
                 try:
-                    obj:Object = self.getObjectFromBubbleLoc(loc)
-                    pixelLocs = obj.getAllPixelLocs()
+                    obj       = self.getObjectFromBubbleLoc(loc)
+                    pixelLocs = obj.getAllPixelLocs()          # list of (x, y)
                     
-                    # Compute position
-                    positions[i, :] = calculatePosition(pixelLocs, params.get('position'))
-                                        
+                    # --- build an (N,2) array of points ---
+                    if (isinstance(pixelLocs, tuple) and len(pixelLocs) == 2
+                        and hasattr(pixelLocs[0], '__len__')
+                        and hasattr(pixelLocs[1], '__len__')):
+                        x_arr, y_arr = pixelLocs
+                        pts = np.column_stack((x_arr, y_arr)).astype(np.int32)
+                    else:
+                        # fallback if you're already returning list of (x,y)
+                        pts = np.asarray(pixelLocs, dtype=np.int32)
+
+                    # --- ellipse fit if enough pts ---
+                    if pts.ndim == 2 and pts.shape[0] >= 5 and pts.shape[1] == 2:
+                        pts_reshaped = pts.reshape(-1, 1, 2)
+                        try:
+                            (cx, cy), (MA, ma), angle = cv2.fitEllipse(pts_reshaped)
+                            major = max(MA, ma)
+                            minor = min(MA, ma)
+                        except cv2.error as e:
+                            logging.error(f"Ellipse fit failed at {loc}: {e}")
+                            cx = cy = major = minor = angle = np.nan
+                    else:
+                        cx = cy = major = minor = angle = np.nan
+
+                    ellipse_params[i] = [cx, cy, major, minor, angle]
+
+                    # --- your existing position calc (e.g. centre of mass) ---
+                    positions[i] = calculatePosition(pixelLocs, params.get('position'))
+
                 except ValueError as e:
-                    logging.error(f"Error retrieving object for trajectory location {loc}: {e}")
-                    positions[i, :] = [np.nan, np.nan]  # Assign NaN for missing positions
-            
+                    logging.error(f"Bubble {bubble.bubbleIndex}, loc {loc}: {e}")
+                    positions[i]      = [np.nan, np.nan]
+                    ellipse_params[i] = [np.nan, np.nan, np.nan, np.nan, np.nan]
+
+            # --- 2) Store position, velocity, acceleration on the bubble ---
             bubble.setPositions_fullTrajectory(positions)
-            
-            if n_points < 2:
-                logging.warning(f"Not enough data points to compute velocity for Bubble {bubble.bubbleIndex}.")
-                bubble.setVelocities_fullTrajectory(np.array([]))
-                bubble.setAccelerations_fullTrajectory(np.array([]))
-                continue
-            
-            # Compute velocities
-            vel = (positions[1:] - positions[:-1]) / dt
-            bubble.setVelocities_fullTrajectory(vel)
-            
-            if n_points < 3:
-                logging.warning(f"Not enough data points to compute acceleration for Bubble {bubble.bubbleIndex}.")
-                bubble.setAccelerations_fullTrajectory(np.array([]))
-                continue
-            
-            # Compute accelerations
-            acc = (vel[1:] - vel[:-1]) / dt
-            bubble.setAccelerations_fullTrajectory(acc)    
+
+            if n_points >= 2:
+                vel = (positions[1:] - positions[:-1]) / dt
+                bubble.setVelocities_fullTrajectory(vel)
+            else:
+                bubble.setVelocities_fullTrajectory(np.empty((0,2)))
+
+            if n_points >= 3:
+                acc = (vel[1:] - vel[:-1]) / dt
+                bubble.setAccelerations_fullTrajectory(acc)
+            else:
+                bubble.setAccelerations_fullTrajectory(np.empty((0,2)))
+
+            # (Optional) store ellipse params back on bubble
+            try:
+                bubble.setEllipseParams_fullTrajectory(ellipse_params)
+            except AttributeError:
+                pass
+
+            # --- 3) Write out ellipse parameters ---
+            df_e = pd.DataFrame({
+                'time':                time,
+                'frameNumber':         frames,
+                'objectIndex':         obj_idxs,
+                'ellipse_center_x':    ellipse_params[:, 0],
+                'ellipse_center_y':    ellipse_params[:, 1],
+                'major_axis_length':   ellipse_params[:, 2],
+                'minor_axis_length':   ellipse_params[:, 3],
+                'ellipse_angle':       ellipse_params[:, 4]
+            })
+            csv_name = f"bubble_{bubble.bubbleIndex}_ellipse.csv"
+            csv_name = bubbleTrackEllipseDir_pathObj / csv_name
+            bubbleTrackEllipseDir_pathObj.mkdir(parents=True, exist_ok=True)
+            df_e.to_csv(csv_name, index=False)
+            # logging.info(f"Saved ellipse parameters for bubble {bubble.bubbleIndex} → {csv_name}")    
 
 
 def convert_to_builtin_types(obj):
