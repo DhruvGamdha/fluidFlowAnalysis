@@ -1,50 +1,131 @@
+#!/usr/bin/env python3
 import pandas as pd
-from scipy.signal import savgol_filter
 import matplotlib.pyplot as plt
+from scipy.signal import savgol_filter
+import argparse
+import os
 
-# === 1. Load the data ===
-# file_path = 'bubble_261_kinematics.csv'   # centroid
-file_path = 'bubble_223_kinematics.csv'     # toppoint
-df = pd.read_csv(file_path, comment='#')
+def convert_and_smooth(df, mmperpix, window_length, polyorder):
+    """
+    - Converts px → mm, px/s → mm/s, px/s² → mm/s² in-place.
+    - Computes smoothed versions in new columns `*_smooth`.
+    """
+    kinematic_cols = [
+        ('position_x', 'mm'),
+        ('position_y', 'mm'),
+        ('velocity_x', 'mm/s'),
+        ('velocity_y', 'mm/s'),
+        ('acceleration_x', 'mm/s²'),
+        ('acceleration_y', 'mm/s²'),
+    ]
 
-# === 2. Define the time range ===
-start_time = 11
-end_time   = 18
-df_range = df[(df['time'] >= start_time) & (df['time'] <= end_time)].reset_index(drop=True)
+    # 1) Convert units
+    for col, _unit in kinematic_cols:
+        df[col] = df[col] * mmperpix
 
-# === 3. Less‐aggressive smoothing params ===
-#    Use a small odd window (e.g. 5) and polyorder=2 (or up to window_length-1)
-window_length = 100                          # try 3 or 5
-polyorder     = min(3, window_length-1)     # up to window_length-1
+    # 2) Smooth
+    for col, _unit in kinematic_cols:
+        df[f'{col}_smooth'] = savgol_filter(df[col], window_length, polyorder)
 
-# Make sure window_length ≤ n_points
-n_points = len(df_range)
-if window_length > n_points:
-    window_length = n_points if n_points % 2 == 1 else n_points-1
-    polyorder     = min(polyorder, window_length-1)
+    return df
 
-# === 4. Apply smoothing ===
-for col in ['position_x','position_y','velocity_x','velocity_y','acceleration_x','acceleration_y']:
-    df_range[f'{col}_smooth'] = savgol_filter(df_range[col], window_length, polyorder)
-    # rolling mean 
-    # df_range[f'{col}_smooth'] = df_range[col].rolling(window=window_length, min_periods=1).mean()
-
-# === 5. Plotting ===
-def plot_pair(y1, y2, ylabel, title):
+def plot_pair(df, raw_x, raw_y, ylabel, title, outfile):
+    """
+    Plots raw (dashed) and smoothed (solid) for x & y on one figure.
+    """
+    t = df['time']
     plt.figure()
-    plt.plot(df_range['time'], df_range[f'{y1}_smooth'], label=f'{y1} (smoothed)')
-    plt.plot(df_range['time'], df_range[f'{y2}_smooth'], label=f'{y2} (smoothed)')
+    # raw
+    plt.plot(t, df[raw_x],    '--', label=f'{raw_x} raw')
+    plt.plot(t, df[raw_y],    '--', label=f'{raw_y} raw')
+    # smooth
+    plt.plot(t, df[f'{raw_x}_smooth'], '-', label=f'{raw_x} smooth')
+    plt.plot(t, df[f'{raw_y}_smooth'], '-', label=f'{raw_y} smooth')
+
     plt.xlabel('Time (s)')
     plt.ylabel(ylabel)
     plt.title(title)
     plt.legend()
-    # plt.show()
-    plt.savefig(f'{y1}_{y2}.png', dpi=300, bbox_inches='tight')
-    
-    # Save the DataFrame to a CSV file
-    df_range.to_csv(f'{y1}_{y2}_smoothed.csv', index=False)
+    plt.savefig(outfile, dpi=300, bbox_inches='tight')
     plt.close()
+    print(f"Saved plot: {outfile}")
+    
+    plt.figure()
+    # raw
+    # plt.plot(t, df[raw_x],    '--', label=f'{raw_x} raw')
+    # plt.plot(t, df[raw_y],    '--', label=f'{raw_y} raw')
+    # smooth
+    plt.plot(t, df[f'{raw_x}_smooth'], '-', label=f'{raw_x} smooth')
+    plt.plot(t, df[f'{raw_y}_smooth'], '-', label=f'{raw_y} smooth')
 
-plot_pair('position_x','position_y',   'Position',     'Less‐Smoothed Position vs Time')
-plot_pair('velocity_x','velocity_y',   'Velocity',     'Less‐Smoothed Velocity vs Time')
-# plot_pair('acceleration_x','acceleration_y', 'Acceleration', 'Less‐Smoothed Acceleration vs Time')
+    plt.xlabel('Time (s)')
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.legend()
+    plt.savefig(outfile.replace('.png', '_smoothed_only.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Saved plot: {outfile.replace('.png', '_smoothed_only.png')}")
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Convert px→mm, smooth kinematics, export CSV and PNGs"
+    )
+    parser.add_argument("csv_file",
+                        help="Input CSV (time + position_x/y, velocity_x/y, acceleration_x/y in px-units)")
+    parser.add_argument("--start", type=float, default=11,
+                        help="Start time (s)")
+    parser.add_argument("--end",   type=float, default=18,
+                        help="End time (s)")
+    parser.add_argument("--mmperpix", type=float, required=True,
+                        help="Millimeters per pixel")
+    parser.add_argument("--window", type=int, default=101,
+                        help="Savgol window length (odd integer)")
+    parser.add_argument("--poly",   type=int, default=3,
+                        help="Savgol polynomial order (≤ window-1)")
+    args = parser.parse_args()
+
+    # — Load & time‐trim —
+    df = pd.read_csv(args.csv_file, comment='#')
+    df = df[(df.time >= args.start) & (df.time <= args.end)].reset_index(drop=True)
+    n = len(df)
+
+    # — Sanitize window & polyorder —
+    w = args.window
+    if w > n:
+        w = n if n % 2 == 1 else n - 1
+    p = min(args.poly, w-1)
+
+    # — Convert & smooth —
+    df = convert_and_smooth(df, args.mmperpix, w, p)
+
+    # — Export single CSV —
+    base = os.path.splitext(os.path.basename(args.csv_file))[0]
+    out_csv = f"{base}_mm_converted_smoothed.csv"
+    df.to_csv(out_csv, index=False)
+    print(f"Exported CSV: {out_csv}")
+
+    # — Plotting —
+    plot_pair(
+        df,
+        raw_x='position_x', raw_y='position_y',
+        ylabel='Position (mm)',
+        title='Position',
+        outfile=f'{base}_position.png'
+    )
+    plot_pair(
+        df,
+        raw_x='velocity_x', raw_y='velocity_y',
+        ylabel='Velocity (mm/s)',
+        title='Velocity',
+        outfile=f'{base}_velocity.png'
+    )
+    plot_pair(
+        df,
+        raw_x='acceleration_x', raw_y='acceleration_y',
+        ylabel='Acceleration (mm/s²)',
+        title='Acceleration',
+        outfile=f'{base}_acceleration.png'
+    )
+
+if __name__ == "__main__":
+    main()
